@@ -5,7 +5,7 @@ import { GeoPoint, VoiceEvent } from "../core/types";
 import { totalDistance, formatDuration, formatDistance, formatPace } from "../core/geo";
 import { buildCallout, checkTriggers } from "../core/voice-triggers";
 import { insertRun } from "../db/database";
-import { requestPermissions, startTracking, stopTracking } from "../platform/gps";
+import { startTracking, stopTracking } from "../platform/gps";
 import { speak } from "../platform/speech";
 
 export default function TimerScreen() {
@@ -29,9 +29,6 @@ export default function TimerScreen() {
   }, []);
 
   const handleStart = useCallback(async () => {
-    const ok = await requestPermissions();
-    if (!ok) return;
-
     reset();
     setRunning(true);
     startTimeRef.current = Date.now();
