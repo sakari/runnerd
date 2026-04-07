@@ -125,7 +125,8 @@ export default function TimerScreen() {
       <Text style={styles.time}>{formatDuration(elapsed)}</Text>
       {running && remaining != null && (
         <Text style={styles.remaining}>
-          <Ionicons name="hourglass-outline" size={16} color="#ff0" /> {formatDuration(remaining)} left
+          <Ionicons name="hourglass-outline" size={16} color="#ff0" /> {formatDuration(remaining)}{" "}
+          left
         </Text>
       )}
       <View style={styles.statRow}>
@@ -141,7 +142,12 @@ export default function TimerScreen() {
         style={[styles.button, running ? styles.stopButton : styles.startButton]}
         onPress={running ? handleStop : handleStart}
       >
-        <Ionicons name={running ? "stop" : "play"} size={40} color="#fff" style={!running && styles.playIcon} />
+        <Ionicons
+          name={running ? "stop" : "play"}
+          size={40}
+          color="#fff"
+          style={!running && styles.playIcon}
+        />
       </Pressable>
     </View>
   );
