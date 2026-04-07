@@ -1,0 +1,43 @@
+{
+  "name": "runnerd",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint 'src/**/*.{ts,tsx}' 'App.tsx'",
+    "format": "prettier --write 'src/**/*.{ts,tsx}' 'App.tsx'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx}' 'App.tsx'"
+  },
+  "dependencies": {
+    "@react-navigation/bottom-tabs": "^7.15.9",
+    "@react-navigation/native": "^7.2.2",
+    "expo": "~54.0.33",
+    "expo-keep-awake": "^55.0.6",
+    "expo-location": "^55.1.6",
+    "expo-speech": "^55.0.11",
+    "expo-sqlite": "^55.0.13",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.4.0"
+  },
+  "devDependencies": {
+    "@expo/ngrok": "^4.1.0",
+    "@types/react": "~19.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2",
+    "vitest": "^4.1.2"
+  },
+  "private": true
+}
