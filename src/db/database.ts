@@ -41,11 +41,11 @@ export async function getAllRuns(): Promise<Run[]> {
     "SELECT id, started_at, finished_at, distance_meters, duration_seconds FROM runs ORDER BY started_at DESC",
   );
   return (rows as Record<string, unknown>[]).map((r) => ({
-    id: r.id,
-    startedAt: r.started_at,
-    finishedAt: r.finished_at,
-    distanceMeters: r.distance_meters,
-    durationSeconds: r.duration_seconds,
+    id: r.id as number,
+    startedAt: r.started_at as string,
+    finishedAt: r.finished_at as string | null,
+    distanceMeters: r.distance_meters as number,
+    durationSeconds: r.duration_seconds as number,
   }));
 }
 
