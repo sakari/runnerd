@@ -74,9 +74,7 @@ export class GpsFilter {
     }
 
     const dt =
-      this.lastTimestamp != null
-        ? Math.max((raw.timestamp - this.lastTimestamp) / 1000, 0.1)
-        : 1;
+      this.lastTimestamp != null ? Math.max((raw.timestamp - this.lastTimestamp) / 1000, 0.1) : 1;
     this.lastTimestamp = raw.timestamp;
 
     const processNoise = this.processNoisePerSecond * dt;

@@ -1,11 +1,5 @@
 import React, { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  StyleSheet,
-} from "react-native";
+import { View, Text, FlatList, Pressable, StyleSheet } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Run, Period, Summary } from "../core/types";
 import { formatDuration, formatDistance, formatPace } from "../core/geo";
@@ -37,9 +31,7 @@ export default function HistoryScreen() {
             style={[styles.toggle, period === p && styles.toggleActive]}
             onPress={() => setPeriod(p)}
           >
-            <Text style={[styles.toggleText, period === p && styles.toggleTextActive]}>
-              {p}
-            </Text>
+            <Text style={[styles.toggleText, period === p && styles.toggleTextActive]}>{p}</Text>
           </Pressable>
         ))}
       </View>
@@ -50,17 +42,13 @@ export default function HistoryScreen() {
           style={[styles.toggle, showSummary && styles.toggleActive]}
           onPress={() => setShowSummary(true)}
         >
-          <Text style={[styles.toggleText, showSummary && styles.toggleTextActive]}>
-            Summary
-          </Text>
+          <Text style={[styles.toggleText, showSummary && styles.toggleTextActive]}>Summary</Text>
         </Pressable>
         <Pressable
           style={[styles.toggle, !showSummary && styles.toggleActive]}
           onPress={() => setShowSummary(false)}
         >
-          <Text style={[styles.toggleText, !showSummary && styles.toggleTextActive]}>
-            Runs
-          </Text>
+          <Text style={[styles.toggleText, !showSummary && styles.toggleTextActive]}>Runs</Text>
         </Pressable>
       </View>
 
@@ -86,7 +74,7 @@ export default function HistoryScreen() {
 function SummaryRow({ summary }: { summary: Summary }) {
   const avgSpeedKmh =
     summary.totalDurationSeconds > 0
-      ? (summary.totalDistanceMeters / 1000) / (summary.totalDurationSeconds / 3600)
+      ? summary.totalDistanceMeters / 1000 / (summary.totalDurationSeconds / 3600)
       : 0;
 
   return (

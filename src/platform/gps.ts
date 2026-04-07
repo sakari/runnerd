@@ -7,8 +7,7 @@ export async function requestPermissions(): Promise<boolean> {
   if (status !== "granted") return false;
 
   // Also request background for when app is backgrounded
-  const bg = await Location.requestBackgroundPermissionsAsync();
-  // Foreground-only is still usable, so we don't fail on bg denial
+  await Location.requestBackgroundPermissionsAsync();
   return true;
 }
 

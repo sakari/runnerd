@@ -13,8 +13,7 @@ export function haversine(a: GeoPoint, b: GeoPoint): number {
   const sinLat = Math.sin(dLat / 2);
   const sinLon = Math.sin(dLon / 2);
   const h =
-    sinLat * sinLat +
-    Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * sinLon * sinLon;
+    sinLat * sinLat + Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * sinLon * sinLon;
   return 2 * EARTH_RADIUS_METERS * Math.asin(Math.sqrt(h));
 }
 
@@ -36,7 +35,7 @@ export function avgSpeed(distanceMeters: number, durationSeconds: number): numbe
 /** Pace in minutes per kilometer. Returns 0 if distance is 0. */
 export function paceMinPerKm(distanceMeters: number, durationSeconds: number): number {
   if (distanceMeters <= 0) return 0;
-  return (durationSeconds / 60) / (distanceMeters / 1000);
+  return durationSeconds / 60 / (distanceMeters / 1000);
 }
 
 /** Format seconds as "MM:SS" or "H:MM:SS". */

@@ -39,10 +39,7 @@ export function checkTriggers(
   const events: VoiceEvent[] = [];
 
   if (targetDistanceMeters != null && targetDistanceMeters > 0) {
-    if (
-      distanceMeters >= targetDistanceMeters / 2 &&
-      !alreadyFired.has("halfway")
-    ) {
+    if (distanceMeters >= targetDistanceMeters / 2 && !alreadyFired.has("halfway")) {
       events.push("halfway");
     }
   }

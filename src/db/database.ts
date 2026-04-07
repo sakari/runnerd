@@ -1,5 +1,5 @@
 import * as SQLite from "expo-sqlite";
-import { Run, Period, Summary } from "../core/types";
+import { Run } from "../core/types";
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -40,7 +40,7 @@ export async function getAllRuns(): Promise<Run[]> {
   const rows = await d.getAllAsync(
     "SELECT id, started_at, finished_at, distance_meters, duration_seconds FROM runs ORDER BY started_at DESC",
   );
-  return (rows as any[]).map((r) => ({
+  return (rows as Record<string, unknown>[]).map((r) => ({
     id: r.id,
     startedAt: r.started_at,
     finishedAt: r.finished_at,

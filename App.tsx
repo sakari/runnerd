@@ -27,16 +27,8 @@ export default function App() {
           freezeOnBlur: false,
         }}
       >
-        <Tab.Screen
-          name="Run"
-          component={TimerScreen}
-          options={{ tabBarLabel: "Run" }}
-        />
-        <Tab.Screen
-          name="History"
-          component={HistoryScreen}
-          options={{ tabBarLabel: "History" }}
-        />
+        <Tab.Screen name="Run" component={TimerScreen} options={{ tabBarLabel: "Run" }} />
+        <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: "History" }} />
       </Tab.Navigator>
     </NavigationContainer>
   );

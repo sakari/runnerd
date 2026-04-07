@@ -19,9 +19,27 @@ describe("periodLabel", () => {
 
 describe("summarize", () => {
   const runs: Run[] = [
-    { id: 1, startedAt: "2026-04-01T08:00:00Z", finishedAt: "2026-04-01T08:30:00Z", distanceMeters: 5000, durationSeconds: 1800 },
-    { id: 2, startedAt: "2026-04-03T08:00:00Z", finishedAt: "2026-04-03T08:25:00Z", distanceMeters: 4500, durationSeconds: 1500 },
-    { id: 3, startedAt: "2026-03-15T08:00:00Z", finishedAt: "2026-03-15T09:00:00Z", distanceMeters: 10000, durationSeconds: 3600 },
+    {
+      id: 1,
+      startedAt: "2026-04-01T08:00:00Z",
+      finishedAt: "2026-04-01T08:30:00Z",
+      distanceMeters: 5000,
+      durationSeconds: 1800,
+    },
+    {
+      id: 2,
+      startedAt: "2026-04-03T08:00:00Z",
+      finishedAt: "2026-04-03T08:25:00Z",
+      distanceMeters: 4500,
+      durationSeconds: 1500,
+    },
+    {
+      id: 3,
+      startedAt: "2026-03-15T08:00:00Z",
+      finishedAt: "2026-03-15T09:00:00Z",
+      distanceMeters: 10000,
+      durationSeconds: 3600,
+    },
   ];
 
   it("groups by month", () => {

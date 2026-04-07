@@ -25,11 +25,7 @@ describe("GpsFilter", () => {
 
     for (let i = 0; i < 20; i++) {
       const noise = (Math.random() - 0.5) * 0.0001; // ~5m noise
-      const raw = makePoint(
-        truePoint.lat + noise,
-        truePoint.lon + noise,
-        i * 3000,
-      );
+      const raw = makePoint(truePoint.lat + noise, truePoint.lon + noise, i * 3000);
       const smoothed = f.process(raw);
       if (smoothed) results.push(smoothed);
     }
@@ -51,11 +47,7 @@ describe("GpsFilter", () => {
 
     for (let i = 0; i < 30; i++) {
       const noise = (Math.random() - 0.5) * 0.0001;
-      const raw = makePoint(
-        truePoint.lat + noise,
-        truePoint.lon + noise,
-        i * 3000,
-      );
+      const raw = makePoint(truePoint.lat + noise, truePoint.lon + noise, i * 3000);
       rawPoints.push(raw);
       const smoothed = f.process(raw);
       if (smoothed) smoothedPoints.push(smoothed);

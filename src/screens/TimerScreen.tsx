@@ -70,9 +70,7 @@ export default function TimerScreen() {
     cleanup();
     setRunning(false);
 
-    const finalElapsed = startTimeRef.current
-      ? (Date.now() - startTimeRef.current) / 1000
-      : 0;
+    const finalElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
     const finalDistance = distanceRef.current;
 
     speak(buildCallout("finish", finalElapsed, finalDistance));
