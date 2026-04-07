@@ -49,6 +49,20 @@ export async function getAllRuns(): Promise<Run[]> {
   }));
 }
 
+export async function updateRun(
+  id: number,
+  distanceMeters: number,
+  durationSeconds: number,
+): Promise<void> {
+  const d = await getDb();
+  await d.runAsync(
+    "UPDATE runs SET distance_meters = ?, duration_seconds = ? WHERE id = ?",
+    distanceMeters,
+    durationSeconds,
+    id,
+  );
+}
+
 export async function deleteRun(id: number): Promise<void> {
   const d = await getDb();
   await d.runAsync("DELETE FROM runs WHERE id = ?", id);
