@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { View, Text, FlatList, Pressable, Modal, TextInput, Alert, StyleSheet } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { Run, Period, Summary } from "../core/types";
 import { formatDuration, formatDistance, formatPace } from "../core/geo";
 import { summarize } from "../core/summaries";
@@ -132,12 +133,14 @@ export default function HistoryScreen() {
           style={[styles.toggle, showSummary && styles.toggleActive]}
           onPress={() => setShowSummary(true)}
         >
+          <Ionicons name="bar-chart-outline" size={14} color={showSummary ? "#fff" : "#888"} />
           <Text style={[styles.toggleText, showSummary && styles.toggleTextActive]}>Summary</Text>
         </Pressable>
         <Pressable
           style={[styles.toggle, !showSummary && styles.toggleActive]}
           onPress={() => setShowSummary(false)}
         >
+          <Ionicons name="list-outline" size={14} color={!showSummary ? "#fff" : "#888"} />
           <Text style={[styles.toggleText, !showSummary && styles.toggleTextActive]}>Runs</Text>
         </Pressable>
       </View>
@@ -188,12 +191,15 @@ export default function HistoryScreen() {
 
             <View style={styles.modalButtons}>
               <Pressable style={styles.btnDelete} onPress={handleDelete}>
+                <Ionicons name="trash-outline" size={16} color="#f44" />
                 <Text style={styles.btnDeleteText}>Delete</Text>
               </Pressable>
               <Pressable style={styles.btnCancel} onPress={() => setEditingRun(null)}>
+                <Ionicons name="close" size={16} color="#aaa" />
                 <Text style={styles.btnCancelText}>Cancel</Text>
               </Pressable>
               <Pressable style={styles.btnSave} onPress={handleSave}>
+                <Ionicons name="checkmark" size={16} color="#fff" />
                 <Text style={styles.btnSaveText}>Save</Text>
               </Pressable>
             </View>
@@ -213,12 +219,24 @@ function SummaryRow({ summary }: { summary: Summary }) {
   return (
     <View style={styles.row}>
       <Text style={styles.label}>{summary.label}</Text>
-      <Text style={styles.stat}>
-        {summary.runCount} run{summary.runCount !== 1 ? "s" : ""}
-      </Text>
-      <Text style={styles.stat}>{formatDistance(summary.totalDistanceMeters)}</Text>
-      <Text style={styles.stat}>{formatDuration(summary.totalDurationSeconds)}</Text>
-      <Text style={styles.stat}>{avgSpeedKmh.toFixed(1)} km/h avg</Text>
+      <View style={styles.statLine}>
+        <Ionicons name="footsteps-outline" size={13} color="#888" />
+        <Text style={styles.stat}>
+          {summary.runCount} run{summary.runCount !== 1 ? "s" : ""}
+        </Text>
+      </View>
+      <View style={styles.statLine}>
+        <Ionicons name="map-outline" size={13} color="#888" />
+        <Text style={styles.stat}>{formatDistance(summary.totalDistanceMeters)}</Text>
+      </View>
+      <View style={styles.statLine}>
+        <Ionicons name="time-outline" size={13} color="#888" />
+        <Text style={styles.stat}>{formatDuration(summary.totalDurationSeconds)}</Text>
+      </View>
+      <View style={styles.statLine}>
+        <Ionicons name="speedometer-outline" size={13} color="#888" />
+        <Text style={styles.stat}>{avgSpeedKmh.toFixed(1)} km/h avg</Text>
+      </View>
     </View>
   );
 }
@@ -233,10 +251,22 @@ function RunRow({ run, onPress }: { run: Run; onPress: () => void }) {
 
   return (
     <Pressable style={styles.row} onPress={onPress}>
-      <Text style={styles.label}>{dateStr}</Text>
-      <Text style={styles.stat}>{formatDistance(run.distanceMeters)}</Text>
-      <Text style={styles.stat}>{formatDuration(run.durationSeconds)}</Text>
-      <Text style={styles.stat}>{formatPace(run.distanceMeters, run.durationSeconds)}</Text>
+      <View style={styles.rowHeader}>
+        <Ionicons name="calendar-outline" size={14} color="#fff" />
+        <Text style={styles.label}>{dateStr}</Text>
+      </View>
+      <View style={styles.statLine}>
+        <Ionicons name="map-outline" size={13} color="#888" />
+        <Text style={styles.stat}>{formatDistance(run.distanceMeters)}</Text>
+      </View>
+      <View style={styles.statLine}>
+        <Ionicons name="time-outline" size={13} color="#888" />
+        <Text style={styles.stat}>{formatDuration(run.durationSeconds)}</Text>
+      </View>
+      <View style={styles.statLine}>
+        <Ionicons name="speedometer-outline" size={13} color="#888" />
+        <Text style={styles.stat}>{formatPace(run.distanceMeters, run.durationSeconds)}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -254,6 +284,9 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   toggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 16,
@@ -276,11 +309,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#333",
   },
+  rowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
   label: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 4,
+  },
+  statLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
   },
   stat: {
     color: "#aaa",
@@ -333,6 +377,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   btnDelete: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -344,6 +391,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   btnCancel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -355,6 +405,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   btnSave: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

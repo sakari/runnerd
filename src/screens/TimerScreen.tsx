@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { Ionicons } from "@expo/vector-icons";
 import { GeoPoint, VoiceEvent, TargetDurationMinutes } from "../core/types";
 import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
 import { buildCallout, checkTriggers } from "../core/voice-triggers";
@@ -123,16 +124,24 @@ export default function TimerScreen() {
 
       <Text style={styles.time}>{formatDuration(elapsed)}</Text>
       {running && remaining != null && (
-        <Text style={styles.remaining}>{formatDuration(remaining)} left</Text>
+        <Text style={styles.remaining}>
+          <Ionicons name="hourglass-outline" size={16} color="#ff0" /> {formatDuration(remaining)} left
+        </Text>
       )}
-      <Text style={styles.distance}>{formatDistance(distance)}</Text>
-      <Text style={styles.pace}>{formatPace(distance, elapsed)}</Text>
+      <View style={styles.statRow}>
+        <Ionicons name="map-outline" size={20} color="#0f0" />
+        <Text style={styles.distance}>{formatDistance(distance)}</Text>
+      </View>
+      <View style={styles.statRow}>
+        <Ionicons name="speedometer-outline" size={18} color="#aaa" />
+        <Text style={styles.pace}>{formatPace(distance, elapsed)}</Text>
+      </View>
 
       <Pressable
         style={[styles.button, running ? styles.stopButton : styles.startButton]}
         onPress={running ? handleStop : handleStart}
       >
-        <Text style={styles.buttonText}>{running ? "STOP" : "START"}</Text>
+        <Ionicons name={running ? "stop" : "play"} size={40} color="#fff" style={!running && styles.playIcon} />
       </Pressable>
     </View>
   );
@@ -152,10 +161,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontVariant: ["tabular-nums"],
   },
+  statRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
   distance: {
     fontSize: 36,
     color: "#0f0",
-    marginTop: 8,
   },
   remaining: {
     fontSize: 20,
@@ -165,7 +179,9 @@ const styles = StyleSheet.create({
   pace: {
     fontSize: 24,
     color: "#aaa",
-    marginTop: 4,
+  },
+  playIcon: {
+    marginLeft: 4,
   },
   durationRow: {
     flexDirection: "row",
@@ -204,10 +220,5 @@ const styles = StyleSheet.create({
   },
   stopButton: {
     backgroundColor: "#c00",
-  },
-  buttonText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#fff",
   },
 });

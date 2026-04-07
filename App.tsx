@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
 import { requestPermissions } from "./src/platform/gps";
 import TimerScreen from "./src/screens/TimerScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
@@ -27,8 +28,26 @@ export default function App() {
           freezeOnBlur: false,
         }}
       >
-        <Tab.Screen name="Run" component={TimerScreen} options={{ tabBarLabel: "Run" }} />
-        <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: "History" }} />
+        <Tab.Screen
+          name="Run"
+          component={TimerScreen}
+          options={{
+            tabBarLabel: "Run",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="footsteps" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="History"
+          component={HistoryScreen}
+          options={{
+            tabBarLabel: "History",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="stats-chart" size={size} color={color} />
+            ),
+          }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
