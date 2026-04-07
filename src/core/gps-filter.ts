@@ -92,9 +92,7 @@ export class GpsFilter {
       if (dt > 0) {
         const dlat = (raw.latitude - this.lastRawLat) * 111_000;
         const dlon =
-          (raw.longitude - this.lastRawLon) *
-          111_000 *
-          Math.cos((raw.latitude * Math.PI) / 180);
+          (raw.longitude - this.lastRawLon) * 111_000 * Math.cos((raw.latitude * Math.PI) / 180);
         const dist = Math.sqrt(dlat * dlat + dlon * dlon);
         const speed = dist / dt;
         if (speed > this.maxSpeedMs) {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { GpsFilter } from "./gps-filter";
-import { totalDistance, haversine } from "./geo";
+import { totalDistance } from "./geo";
 import { GeoPoint } from "./types";
 
 /**
