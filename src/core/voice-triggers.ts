@@ -20,6 +20,8 @@ export function buildCallout(
       return { event, text: "Run started. Let's go!" };
     case "halfway":
       return { event, text: `Halfway. ${dist} covered in ${time}.` };
+    case "time-halfway":
+      return { event, text: `Halfway. ${time} elapsed, ${dist} covered.` };
     case "finish":
       return { event, text: `Run complete. ${dist} in ${time}. Nice work!` };
   }
@@ -35,12 +37,20 @@ export function checkTriggers(
   distanceMeters: number,
   targetDistanceMeters: number | null,
   alreadyFired: Set<VoiceEvent>,
+  elapsedSeconds?: number,
+  targetDurationSeconds?: number | null,
 ): VoiceEvent[] {
   const events: VoiceEvent[] = [];
 
   if (targetDistanceMeters != null && targetDistanceMeters > 0) {
     if (distanceMeters >= targetDistanceMeters / 2 && !alreadyFired.has("halfway")) {
       events.push("halfway");
+    }
+  }
+
+  if (targetDurationSeconds != null && targetDurationSeconds > 0 && elapsedSeconds != null) {
+    if (elapsedSeconds >= targetDurationSeconds / 2 && !alreadyFired.has("time-halfway")) {
+      events.push("time-halfway");
     }
   }
 
