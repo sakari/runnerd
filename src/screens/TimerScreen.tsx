@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
-import { GeoPoint, VoiceEvent } from "../core/types";
+import { GeoPoint, VoiceEvent, TargetDurationMinutes } from "../core/types";
 import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
 import { buildCallout, checkTriggers } from "../core/voice-triggers";
 import { insertRun } from "../db/database";
@@ -12,6 +12,7 @@ export default function TimerScreen() {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [targetDuration, setTargetDuration] = useState<TargetDurationMinutes | null>(null);
   const firedRef = useRef<Set<VoiceEvent>>(new Set());
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -82,19 +83,48 @@ export default function TimerScreen() {
     await insertRun(startedAt, new Date().toISOString(), finalDistance, finalElapsed);
   }, [cleanup]);
 
-  // Check voice triggers on distance change
+  const targetSeconds = targetDuration != null ? targetDuration * 60 : null;
+  const remaining = targetSeconds != null ? Math.max(0, targetSeconds - elapsed) : null;
+
+  // Check voice triggers on distance/elapsed change
   useEffect(() => {
     if (!running) return;
-    const events = checkTriggers(distance, null, firedRef.current);
+    const events = checkTriggers(distance, null, firedRef.current, elapsed, targetSeconds);
     for (const e of events) {
       firedRef.current.add(e);
       speak(buildCallout(e, elapsed, distance));
     }
-  }, [distance, running, elapsed]);
+  }, [distance, elapsed, running, targetSeconds]);
+
+  const durations: TargetDurationMinutes[] = [30, 60];
 
   return (
     <View style={styles.container}>
+      {!running && (
+        <View style={styles.durationRow}>
+          {durations.map((d) => (
+            <Pressable
+              key={d}
+              style={[styles.durationChip, targetDuration === d && styles.durationChipActive]}
+              onPress={() => setTargetDuration(targetDuration === d ? null : d)}
+            >
+              <Text
+                style={[
+                  styles.durationChipText,
+                  targetDuration === d && styles.durationChipTextActive,
+                ]}
+              >
+                {d}m
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       <Text style={styles.time}>{formatDuration(elapsed)}</Text>
+      {running && remaining != null && (
+        <Text style={styles.remaining}>{formatDuration(remaining)} left</Text>
+      )}
       <Text style={styles.distance}>{formatDistance(distance)}</Text>
       <Text style={styles.pace}>{formatPace(distance, elapsed)}</Text>
 
@@ -127,10 +157,39 @@ const styles = StyleSheet.create({
     color: "#0f0",
     marginTop: 8,
   },
+  remaining: {
+    fontSize: 20,
+    color: "#ff0",
+    marginTop: 2,
+  },
   pace: {
     fontSize: 24,
     color: "#aaa",
     marginTop: 4,
+  },
+  durationRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+  },
+  durationChip: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#555",
+  },
+  durationChipActive: {
+    backgroundColor: "#1a1",
+    borderColor: "#1a1",
+  },
+  durationChipText: {
+    fontSize: 18,
+    color: "#aaa",
+    fontWeight: "600",
+  },
+  durationChipTextActive: {
+    color: "#fff",
   },
   button: {
     marginTop: 48,
