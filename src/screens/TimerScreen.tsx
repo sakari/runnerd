@@ -12,7 +12,7 @@ export default function TimerScreen() {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
-  const [targetDuration, setTargetDuration] = useState<TargetDurationMinutes>(null);
+  const [targetDuration, setTargetDuration] = useState<TargetDurationMinutes | null>(null);
   const firedRef = useRef<Set<VoiceEvent>>(new Set());
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -83,19 +83,18 @@ export default function TimerScreen() {
     await insertRun(startedAt, new Date().toISOString(), finalDistance, finalElapsed);
   }, [cleanup]);
 
-  // Check voice triggers on distance change
+  const targetSeconds = targetDuration != null ? targetDuration * 60 : null;
+  const remaining = targetSeconds != null ? Math.max(0, targetSeconds - elapsed) : null;
+
+  // Check voice triggers on distance/elapsed change
   useEffect(() => {
     if (!running) return;
-    const targetSeconds = targetDuration != null ? targetDuration * 60 : null;
     const events = checkTriggers(distance, null, firedRef.current, elapsed, targetSeconds);
     for (const e of events) {
       firedRef.current.add(e);
       speak(buildCallout(e, elapsed, distance));
     }
-  }, [distance, elapsed, running, targetDuration]);
-
-  const targetSeconds = targetDuration != null ? targetDuration * 60 : null;
-  const remaining = targetSeconds != null ? Math.max(0, targetSeconds - elapsed) : null;
+  }, [distance, elapsed, running, targetSeconds]);
 
   const durations: TargetDurationMinutes[] = [30, 60];
 
