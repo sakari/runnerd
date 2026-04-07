@@ -60,7 +60,11 @@ export function formatDistance(meters: number): string {
 export function formatPace(distanceMeters: number, durationSeconds: number): string {
   const pace = paceMinPerKm(distanceMeters, durationSeconds);
   if (pace <= 0) return "--:-- /km";
-  const mins = Math.floor(pace);
-  const secs = Math.round((pace - mins) * 60);
+  let mins = Math.floor(pace);
+  let secs = Math.round((pace - mins) * 60);
+  if (secs === 60) {
+    mins += 1;
+    secs = 0;
+  }
   return `${mins}:${String(secs).padStart(2, "0")} /km`;
 }

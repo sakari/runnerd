@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { GeoPoint, VoiceEvent } from "../core/types";
-import { totalDistance, formatDuration, formatDistance, formatPace } from "../core/geo";
+import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
 import { buildCallout, checkTriggers } from "../core/voice-triggers";
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
@@ -12,16 +12,30 @@ export default function TimerScreen() {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
-  const [points, setPoints] = useState<GeoPoint[]>([]);
   const firedRef = useRef<Set<VoiceEvent>>(new Set());
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const distanceRef = useRef(0);
+  const lastPointRef = useRef<GeoPoint | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    stopTracking();
+    deactivateKeepAwake();
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => cleanup, [cleanup]);
 
   const reset = useCallback(() => {
     setRunning(false);
     setElapsed(0);
     setDistance(0);
-    setPoints([]);
+    distanceRef.current = 0;
+    lastPointRef.current = null;
     firedRef.current = new Set();
     startTimeRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
@@ -44,39 +58,35 @@ export default function TimerScreen() {
     firedRef.current.add("start");
 
     await startTracking((point) => {
-      setPoints((prev) => {
-        const next = [...prev, point];
-        const d = totalDistance(next);
-        setDistance(d);
-        return next;
-      });
+      if (lastPointRef.current) {
+        distanceRef.current += haversine(lastPointRef.current, point);
+      }
+      lastPointRef.current = point;
+      setDistance(distanceRef.current);
     });
   }, [reset]);
 
   const handleStop = useCallback(async () => {
-    stopTracking();
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
+    cleanup();
     setRunning(false);
-    deactivateKeepAwake();
 
     const finalElapsed = startTimeRef.current
       ? (Date.now() - startTimeRef.current) / 1000
-      : elapsed;
+      : 0;
+    const finalDistance = distanceRef.current;
 
-    speak(buildCallout("finish", finalElapsed, distance));
+    speak(buildCallout("finish", finalElapsed, finalDistance));
 
     const startedAt = startTimeRef.current
       ? new Date(startTimeRef.current).toISOString()
       : new Date().toISOString();
 
-    await insertRun(startedAt, new Date().toISOString(), distance, finalElapsed);
-  }, [elapsed, distance]);
+    await insertRun(startedAt, new Date().toISOString(), finalDistance, finalElapsed);
+  }, [cleanup]);
 
   // Check voice triggers on distance change
   useEffect(() => {
     if (!running) return;
-    // For now, no target distance — halfway triggers can be added when user sets a target
     const events = checkTriggers(distance, null, firedRef.current);
     for (const e of events) {
       firedRef.current.add(e);

@@ -103,6 +103,26 @@ describe("GpsFilter", () => {
     expect(dist).toBeLessThan(200);
   });
 
+  it("updates timestamp on rejected spike so next point has correct dt", () => {
+    const f = new GpsFilter();
+    f.process(makePoint(60.17, 24.94, 0));
+    f.process(makePoint(60.17001, 24.94001, 3000));
+
+    // Spike at t=6000 — rejected
+    f.process(makePoint(60.18, 24.94, 6000));
+
+    // Normal point at t=9000 — dt should be 3s (from spike timestamp), not 6s
+    // If timestamp wasn't updated on spike, dt=6s would inflate process noise
+    // and make the filter overshoot
+    const p1 = f.process(makePoint(60.17002, 24.94002, 9000));
+    const p2 = f.process(makePoint(60.17003, 24.94003, 12000));
+    expect(p1).not.toBeNull();
+    expect(p2).not.toBeNull();
+
+    // Both should be close to the actual position, not wildly off
+    expect(Math.abs(p2!.latitude - 60.17003)).toBeLessThan(0.0001);
+  });
+
   it("reset clears state for a new run", () => {
     const f = new GpsFilter();
     f.process(makePoint(60.17, 24.94, 0));

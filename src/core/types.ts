@@ -23,12 +23,3 @@ export interface Summary {
 }
 
 export type VoiceEvent = "start" | "halfway" | "finish";
-
-export interface RunState {
-  isRunning: boolean;
-  startTime: number | null;
-  elapsedSeconds: number;
-  distanceMeters: number;
-  points: GeoPoint[];
-  targetDistanceMeters: number | null;
-}

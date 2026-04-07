@@ -88,4 +88,15 @@ describe("formatPace", () => {
   it("formats 5:00 /km", () => {
     expect(formatPace(1000, 300)).toBe("5:00 /km");
   });
+
+  it("does not produce :60 seconds", () => {
+    // Find a distance/duration combo where (pace - floor(pace)) * 60 rounds to 60
+    // pace = (durationSeconds / 60) / (distanceMeters / 1000)
+    // We need fractional minutes ≈ X.9917+ so round(0.9917*60) = round(59.5) = 60
+    // pace ≈ 4.9958 → fractional part * 60 = 59.75 → rounds to 60
+    // dist=1000, duration = 4.9958 * 60 = 299.75
+    const result = formatPace(1000, 299.75);
+    expect(result).not.toContain(":60");
+    expect(result).toBe("5:00 /km");
+  });
 });

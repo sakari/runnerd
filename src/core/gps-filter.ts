@@ -67,6 +67,7 @@ export class GpsFilter {
         const dist = Math.sqrt(dlat * dlat + dlon * dlon);
         const speed = dist / dt;
         if (speed > this.maxSpeedMs) {
+          this.lastTimestamp = raw.timestamp;
           return null; // reject this point
         }
       }
