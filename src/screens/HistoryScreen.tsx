@@ -1,14 +1,5 @@
 import React, { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  Modal,
-  TextInput,
-  Alert,
-  StyleSheet,
-} from "react-native";
+import { View, Text, FlatList, Pressable, Modal, TextInput, Alert, StyleSheet } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Run, Period, Summary } from "../core/types";
 import { formatDuration, formatDistance, formatPace } from "../core/geo";
