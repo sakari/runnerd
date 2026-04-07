@@ -17,12 +17,14 @@ export default function App() {
     <NavigationContainer>
       <StatusBar style="light" />
       <Tab.Navigator
+        detachInactiveScreens={false}
         screenOptions={{
           headerStyle: { backgroundColor: "#000" },
           headerTintColor: "#fff",
           tabBarStyle: { backgroundColor: "#000", borderTopColor: "#333" },
           tabBarActiveTintColor: "#1a1",
           tabBarInactiveTintColor: "#888",
+          freezeOnBlur: false,
         }}
       >
         <Tab.Screen
