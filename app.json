@@ -18,7 +18,7 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Runnerd uses your location to track distance during runs.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Runnerd uses your location in the background to keep tracking your run.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": ["location", "audio"]
       }
     },
     "android": {
