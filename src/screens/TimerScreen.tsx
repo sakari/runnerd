@@ -19,6 +19,7 @@ export default function TimerScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const distanceRef = useRef(0);
   const lastPointRef = useRef<GeoPoint | null>(null);
+  const targetDurationRef = useRef<TargetDurationMinutes | null>(null);
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -65,10 +66,24 @@ export default function TimerScreen() {
       }
       lastPointRef.current = point;
       setDistance(distanceRef.current);
-      // Update elapsed from wall clock so voice triggers fire in background
-      // (setInterval is suspended when the app is backgrounded)
-      if (startTimeRef.current) {
-        setElapsed((Date.now() - startTimeRef.current) / 1000);
+
+      // Compute elapsed from wall clock — setInterval is suspended in background
+      const currentElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
+      setElapsed(currentElapsed);
+
+      // Check voice triggers directly in the GPS callback so they fire
+      // even when the app is backgrounded (React effects don't run in background)
+      const targetSec = targetDurationRef.current != null ? targetDurationRef.current * 60 : null;
+      const events = checkTriggers(
+        distanceRef.current,
+        null,
+        firedRef.current,
+        currentElapsed,
+        targetSec,
+      );
+      for (const e of events) {
+        firedRef.current.add(e);
+        speak(buildCallout(e, currentElapsed, distanceRef.current));
       }
     });
   }, [reset]);
@@ -92,15 +107,10 @@ export default function TimerScreen() {
   const targetSeconds = targetDuration != null ? targetDuration * 60 : null;
   const remaining = targetSeconds != null ? Math.max(0, targetSeconds - elapsed) : null;
 
-  // Check voice triggers on distance/elapsed change
+  // Keep targetDurationRef in sync so the GPS callback can access it
   useEffect(() => {
-    if (!running) return;
-    const events = checkTriggers(distance, null, firedRef.current, elapsed, targetSeconds);
-    for (const e of events) {
-      firedRef.current.add(e);
-      speak(buildCallout(e, elapsed, distance));
-    }
-  }, [distance, elapsed, running, targetSeconds]);
+    targetDurationRef.current = targetDuration;
+  }, [targetDuration]);
 
   const [customInput, setCustomInput] = useState("");
   const presets = [30, 60];
