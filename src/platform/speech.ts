@@ -1,10 +1,31 @@
 import * as Speech from "expo-speech";
+import { Audio } from "expo-av";
 import { VoiceCallout } from "../core/voice-triggers";
 import { ensureAudioSession } from "./audio-session";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const silenceAsset = require("../../assets/silence.wav");
+
+// Play a silent clip via expo-av to wake up the iOS audio session.
+// AVSpeechSynthesizer (expo-speech) gets suspended on lock screen,
+// but an active AVAudioPlayer session keeps it alive.
+async function activateAudioSession(): Promise<void> {
+  try {
+    const { sound } = await Audio.Sound.createAsync(silenceAsset);
+    await sound.playAsync();
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if ("didJustFinish" in status && status.didJustFinish) {
+        sound.unloadAsync();
+      }
+    });
+  } catch {
+    // Best-effort — speech may still work without this
+  }
+}
+
 export async function speak(callout: VoiceCallout): Promise<void> {
   await ensureAudioSession();
-  // Stop any in-progress speech before starting new one
+  await activateAudioSession();
   await Speech.stop();
   return new Promise<void>((resolve) => {
     Speech.speak(callout.text, {
