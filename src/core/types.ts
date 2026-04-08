@@ -24,4 +24,4 @@ export interface Summary {
 
 export type VoiceEvent = "start" | "halfway" | "time-halfway" | "finish";
 
-export type TargetDurationMinutes = 30 | 60;
+export type TargetDurationMinutes = number;

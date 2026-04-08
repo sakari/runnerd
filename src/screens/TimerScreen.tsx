@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, TextInput, StyleSheet } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
 import { GeoPoint, VoiceEvent, TargetDurationMinutes } from "../core/types";
@@ -97,28 +97,73 @@ export default function TimerScreen() {
     }
   }, [distance, elapsed, running, targetSeconds]);
 
-  const durations: TargetDurationMinutes[] = [30, 60];
+  const [customInput, setCustomInput] = useState("");
+  const presets = [30, 60];
+
+  const selectPreset = (d: number) => {
+    if (targetDuration === d) {
+      setTargetDuration(null);
+      setCustomInput("");
+    } else {
+      setTargetDuration(d);
+      setCustomInput("");
+    }
+  };
+
+  const applyCustom = () => {
+    const mins = parseFloat(customInput);
+    if (!isNaN(mins) && mins > 0) {
+      setTargetDuration(mins);
+    }
+  };
 
   return (
     <View style={styles.container}>
       {!running && (
-        <View style={styles.durationRow}>
-          {durations.map((d) => (
-            <Pressable
-              key={d}
-              style={[styles.durationChip, targetDuration === d && styles.durationChipActive]}
-              onPress={() => setTargetDuration(targetDuration === d ? null : d)}
-            >
-              <Text
-                style={[
-                  styles.durationChipText,
-                  targetDuration === d && styles.durationChipTextActive,
-                ]}
+        <View style={styles.durationSection}>
+          <View style={styles.durationRow}>
+            {presets.map((d) => (
+              <Pressable
+                key={d}
+                style={[styles.durationChip, targetDuration === d && styles.durationChipActive]}
+                onPress={() => selectPreset(d)}
               >
-                {d}m
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.durationChipText,
+                    targetDuration === d && styles.durationChipTextActive,
+                  ]}
+                >
+                  {d}m
+                </Text>
+              </Pressable>
+            ))}
+            <View style={styles.customInputRow}>
+              <TextInput
+                style={styles.customInput}
+                value={customInput}
+                onChangeText={(text) => {
+                  setCustomInput(text);
+                  setTargetDuration(null);
+                }}
+                onSubmitEditing={applyCustom}
+                placeholder="min"
+                placeholderTextColor="#555"
+                keyboardType="numeric"
+                returnKeyType="done"
+              />
+              <Pressable
+                style={[styles.durationChip, styles.customApply]}
+                onPress={applyCustom}
+                disabled={!customInput}
+              >
+                <Ionicons name="checkmark" size={18} color={customInput ? "#fff" : "#555"} />
+              </Pressable>
+            </View>
+          </View>
+          {targetDuration != null && (
+            <Text style={styles.targetLabel}>{targetDuration} min target</Text>
+          )}
         </View>
       )}
 
@@ -189,10 +234,39 @@ const styles = StyleSheet.create({
   playIcon: {
     marginLeft: 4,
   },
+  durationSection: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
   durationRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 12,
-    marginBottom: 24,
+  },
+  customInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  customInput: {
+    width: 60,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#555",
+    color: "#fff",
+    fontSize: 16,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  customApply: {
+    borderColor: "#555",
+    paddingHorizontal: 10,
+  },
+  targetLabel: {
+    color: "#1a1",
+    fontSize: 14,
+    marginTop: 8,
   },
   durationChip: {
     paddingHorizontal: 20,
