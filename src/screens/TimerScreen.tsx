@@ -65,6 +65,11 @@ export default function TimerScreen() {
       }
       lastPointRef.current = point;
       setDistance(distanceRef.current);
+      // Update elapsed from wall clock so voice triggers fire in background
+      // (setInterval is suspended when the app is backgrounded)
+      if (startTimeRef.current) {
+        setElapsed((Date.now() - startTimeRef.current) / 1000);
+      }
     });
   }, [reset]);
 

@@ -1,9 +1,6 @@
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
 
-let configured = false;
-
 export async function ensureAudioSession(): Promise<void> {
-  if (configured) return;
   await Audio.setAudioModeAsync({
     playsInSilentModeIOS: true,
     staysActiveInBackground: true,
@@ -11,5 +8,4 @@ export async function ensureAudioSession(): Promise<void> {
     interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
     shouldDuckAndroid: true,
   });
-  configured = true;
 }
