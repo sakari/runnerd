@@ -42,5 +42,10 @@
     "typescript": "~5.9.2",
     "vitest": "^4.1.2"
   },
-  "private": true
+  "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp"
+    ]
+  }
 }
