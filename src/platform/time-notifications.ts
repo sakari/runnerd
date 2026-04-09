@@ -9,7 +9,7 @@ export async function scheduleTimeNotifications(targetDurationSeconds: number): 
   const halfway = Math.floor(targetDurationSeconds / 2);
 
   await Notifications.scheduleNotificationAsync({
-    identifier: "run-callout",
+    identifier: "run-halfway",
     content: {
       title: "Halfway",
       body: "You're halfway through your run",
@@ -23,7 +23,7 @@ export async function scheduleTimeNotifications(targetDurationSeconds: number): 
   });
 
   await Notifications.scheduleNotificationAsync({
-    identifier: "run-callout",
+    identifier: "run-finish",
     content: {
       title: "Time's up",
       body: "You've reached your target time",
@@ -39,4 +39,19 @@ export async function scheduleTimeNotifications(targetDurationSeconds: number): 
 
 export async function cancelTimeNotifications(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
+  await Notifications.dismissNotificationAsync("run-halfway");
+  await Notifications.dismissNotificationAsync("run-finish");
+}
+
+export function setupNotificationHandler(): void {
+  Notifications.setNotificationHandler({
+    handleNotification: async (notification) => {
+      const id = notification.request.identifier;
+      // When finish fires, dismiss the halfway notification
+      if (id === "run-finish") {
+        await Notifications.dismissNotificationAsync("run-halfway");
+      }
+      return { shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false };
+    },
+  });
 }

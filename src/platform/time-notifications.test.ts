@@ -2,12 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockSchedule = vi.fn();
 const mockCancel = vi.fn();
+const mockDismiss = vi.fn();
 const mockRequestPermissions = vi.fn();
+const mockSetHandler = vi.fn();
 
 vi.mock("expo-notifications", () => ({
   scheduleNotificationAsync: (...args: unknown[]) => mockSchedule(...args),
   cancelAllScheduledNotificationsAsync: (...args: unknown[]) => mockCancel(...args),
+  dismissNotificationAsync: (...args: unknown[]) => mockDismiss(...args),
   requestPermissionsAsync: (...args: unknown[]) => mockRequestPermissions(...args),
+  setNotificationHandler: (...args: unknown[]) => mockSetHandler(...args),
   SchedulableTriggerInputTypes: { TIME_INTERVAL: "timeInterval" },
 }));
 
@@ -15,6 +19,7 @@ import {
   requestNotificationPermissions,
   scheduleTimeNotifications,
   cancelTimeNotifications,
+  setupNotificationHandler,
 } from "./time-notifications";
 
 beforeEach(() => {
@@ -54,8 +59,27 @@ describe("scheduleTimeNotifications", () => {
 });
 
 describe("cancelTimeNotifications", () => {
-  it("cancels all scheduled notifications", async () => {
+  it("cancels scheduled and dismisses delivered notifications", async () => {
     await cancelTimeNotifications();
     expect(mockCancel).toHaveBeenCalledOnce();
+    expect(mockDismiss).toHaveBeenCalledWith("run-halfway");
+    expect(mockDismiss).toHaveBeenCalledWith("run-finish");
+  });
+});
+
+describe("setupNotificationHandler", () => {
+  it("registers a notification handler", () => {
+    setupNotificationHandler();
+    expect(mockSetHandler).toHaveBeenCalledOnce();
+  });
+
+  it("dismisses halfway notification when finish fires", async () => {
+    setupNotificationHandler();
+    const handler = mockSetHandler.mock.calls[0][0];
+    const result = await handler.handleNotification({
+      request: { identifier: "run-finish" },
+    });
+    expect(mockDismiss).toHaveBeenCalledWith("run-halfway");
+    expect(result).toEqual({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false });
   });
 });
