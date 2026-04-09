@@ -1,6 +1,6 @@
 import { Audio } from "expo-av";
 import { VoiceEvent } from "../core/types";
-import { ensureAudioSession, deactivateAudioSession } from "./audio-session";
+import { ensureAudioSession } from "./audio-session";
 import calloutAssets from "./callout-assets";
 
 export async function playCallout(event: VoiceEvent): Promise<void> {
@@ -8,7 +8,7 @@ export async function playCallout(event: VoiceEvent): Promise<void> {
   const { sound } = await Audio.Sound.createAsync(calloutAssets[event]);
   sound.setOnPlaybackStatusUpdate((status) => {
     if (status.isLoaded && status.didJustFinish) {
-      sound.unloadAsync().then(() => deactivateAudioSession());
+      sound.unloadAsync();
     }
   });
   await sound.playAsync();
