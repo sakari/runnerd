@@ -407,27 +407,53 @@ For the TTS-on-lock-screen scenario that can't be automated:
 5. Verify the "halfway" callout plays through the speaker
 6. Verify the "finish" callout plays at 1 km
 
-### Phase 3: CI integration (optional)
+### Phase 3: CI integration (manual trigger)
 
-Maestro tests can run via EAS Workflows (Expo's CI) or macOS GitHub Actions:
+Use `workflow_dispatch` so the macOS runner only runs when you explicitly
+click "Run workflow" in the GitHub Actions UI -- no minutes burned on every
+push or PR.
 
 ```yaml
 # .github/workflows/e2e.yml
 name: E2E Tests
-on: [pull_request]
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: "iOS Simulator device"
+        default: "iPhone 16"
+        type: string
+
 jobs:
   e2e:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
+        with:
+          node-version: 22
+          cache: pnpm
       - run: pnpm install
-      - run: curl -Ls "https://get.maestro.mobile.dev" | bash
-      - run: xcrun simctl boot "iPhone 16"
-      - run: xcrun simctl install booted bin/runnerd.app
-      - run: maestro test .maestro/
+
+      - name: Install Maestro
+        run: curl -Ls "https://get.maestro.mobile.dev" | bash
+
+      - name: Build for simulator
+        run: eas build --profile e2e-simulator --platform ios --local --output bin/runnerd.app
+
+      - name: Boot simulator
+        run: xcrun simctl boot "${{ inputs.device }}"
+
+      - name: Install app
+        run: xcrun simctl install booted bin/runnerd.app
+
+      - name: Run E2E tests
+        run: |
+          export PATH="$PATH:$HOME/.maestro/bin"
+          maestro test .maestro/
 ```
+
+To run: go to Actions > "E2E Tests" > "Run workflow" > pick branch > Run.
 
 Note: GitHub Actions free tier includes macOS runners, but each macOS minute
 counts as 10 minutes against your monthly quota (2,000 min on Free plan =
