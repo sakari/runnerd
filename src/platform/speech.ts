@@ -27,19 +27,13 @@ export async function unloadCallouts(): Promise<void> {
 }
 
 export async function playCallout(event: VoiceEvent): Promise<void> {
-  console.log(`[callout] playCallout("${event}") called, preloaded=${!!loaded[event]}`);
-  try {
-    await ensureAudioSession();
-    const sound = loaded[event];
-    if (sound) {
-      await sound.setPositionAsync(0);
-      await sound.playAsync();
-    } else {
-      const { sound: s } = await Audio.Sound.createAsync(calloutAssets[event]);
-      await s.playAsync();
-    }
-    console.log(`[callout] playCallout("${event}") succeeded`);
-  } catch (err) {
-    console.error(`[callout] playCallout("${event}") failed:`, err);
+  await ensureAudioSession();
+  const sound = loaded[event];
+  if (sound) {
+    await sound.setPositionAsync(0);
+    await sound.playAsync();
+  } else {
+    const { sound: s } = await Audio.Sound.createAsync(calloutAssets[event]);
+    await s.playAsync();
   }
 }
