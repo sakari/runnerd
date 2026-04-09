@@ -36,6 +36,7 @@
     },
     "plugins": [
       "expo-sqlite",
+      "./plugins/with-local-notifications-only",
       [
         "expo-notifications",
         {
@@ -44,8 +45,7 @@
             "./assets/callouts/times_up.wav"
           ]
         }
-      ],
-      "./plugins/with-local-notifications-only"
+      ]
     ]
   }
 }
