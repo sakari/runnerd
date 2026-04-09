@@ -2,9 +2,7 @@ import * as Speech from "expo-speech";
 import { Audio } from "expo-av";
 import { VoiceCallout } from "../core/voice-triggers";
 import { ensureAudioSession } from "./audio-session";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const silenceAsset = require("../../assets/silence.wav");
+import silenceAsset from "./silence-asset";
 
 // Play a silent clip via expo-av to wake up the iOS audio session.
 // AVSpeechSynthesizer (expo-speech) gets suspended on lock screen,
