@@ -9,6 +9,7 @@ export async function scheduleTimeNotifications(targetDurationSeconds: number): 
   const halfway = Math.floor(targetDurationSeconds / 2);
 
   await Notifications.scheduleNotificationAsync({
+    identifier: "run-callout",
     content: {
       title: "Halfway",
       body: "You're halfway through your run",
@@ -22,6 +23,7 @@ export async function scheduleTimeNotifications(targetDurationSeconds: number): 
   });
 
   await Notifications.scheduleNotificationAsync({
+    identifier: "run-callout",
     content: {
       title: "Time's up",
       body: "You've reached your target time",
