@@ -10,7 +10,6 @@ const timesUp = require("../../assets/callouts/times-up.wav");
 const calloutAssets: Record<VoiceEvent, number> = {
   start: letsGo,
   halfway: halfway,
-  "time-halfway": halfway,
   finish: timesUp,
 };
 

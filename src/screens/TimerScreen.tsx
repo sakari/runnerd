@@ -2,9 +2,9 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, Pressable, TextInput, StyleSheet } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
-import { GeoPoint, VoiceEvent, TargetDurationMinutes } from "../core/types";
+import { GeoPoint, TargetDurationMinutes } from "../core/types";
 import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
-import { checkTriggers } from "../core/voice-triggers";
+
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
 import { playCallout, preloadCallouts, unloadCallouts } from "../platform/speech";
@@ -18,7 +18,6 @@ export default function TimerScreen() {
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
   const [targetDuration, setTargetDuration] = useState<TargetDurationMinutes | null>(null);
-  const firedRef = useRef<Set<VoiceEvent>>(new Set());
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const distanceRef = useRef(0);
@@ -50,7 +49,6 @@ export default function TimerScreen() {
     setDistance(0);
     distanceRef.current = 0;
     lastPointRef.current = null;
-    firedRef.current = new Set();
     startTimeRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
@@ -70,7 +68,6 @@ export default function TimerScreen() {
     }, 1000);
 
     playCallout("start");
-    firedRef.current.add("start");
 
     // Schedule time-based notifications (halfway, finish) via OS notifications
     // so they fire reliably even when backgrounded/locked
@@ -90,12 +87,6 @@ export default function TimerScreen() {
       const currentElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
       setElapsed(currentElapsed);
 
-      // Check distance-based voice triggers in the GPS callback
-      const events = checkTriggers(distanceRef.current, null, firedRef.current);
-      for (const e of events) {
-        firedRef.current.add(e);
-        playCallout(e);
-      }
     });
   }, [reset]);
 
@@ -106,9 +97,7 @@ export default function TimerScreen() {
     const finalElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
     const finalDistance = distanceRef.current;
 
-    if (!firedRef.current.has("finish")) {
-      playCallout("finish");
-    }
+    playCallout("finish");
 
     const startedAt = startTimeRef.current
       ? new Date(startTimeRef.current).toISOString()

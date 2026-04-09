@@ -7,7 +7,7 @@ const { mockUnloadAsync, mockPlayAsync, mockSetPositionAsync } = vi.hoisted(() =
 }));
 
 vi.mock("./callout-assets", () => ({
-  default: { start: 1, halfway: 2, "time-halfway": 2, finish: 3 },
+  default: { start: 1, halfway: 2, finish: 3 },
 }));
 
 vi.mock("expo-av", () => ({
@@ -84,9 +84,6 @@ describe("playCallout", () => {
 
   it("plays the correct asset for each event", async () => {
     await preloadCallouts();
-
-    await playCallout("time-halfway");
-    expect(mockPlayAsync).toHaveBeenCalled();
 
     await playCallout("finish");
     expect(mockPlayAsync).toHaveBeenCalled();
