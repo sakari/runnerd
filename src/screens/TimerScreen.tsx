@@ -4,6 +4,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
 import { GeoPoint, VoiceEvent, TargetDurationMinutes } from "../core/types";
 import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
+import { GpsFilter } from "../core/gps-filter";
 import { buildCallout, checkTriggers } from "../core/voice-triggers";
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
@@ -19,6 +20,7 @@ export default function TimerScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const distanceRef = useRef(0);
   const lastPointRef = useRef<GeoPoint | null>(null);
+  const filterRef = useRef<GpsFilter | null>(null);
   const targetDurationRef = useRef<TargetDurationMinutes | null>(null);
 
   const cleanup = useCallback(() => {
@@ -39,6 +41,7 @@ export default function TimerScreen() {
     setDistance(0);
     distanceRef.current = 0;
     lastPointRef.current = null;
+    filterRef.current = null;
     firedRef.current = new Set();
     startTimeRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
@@ -60,11 +63,14 @@ export default function TimerScreen() {
     speak(buildCallout("start", 0, 0));
     firedRef.current.add("start");
 
-    await startTracking((point) => {
-      if (lastPointRef.current) {
-        distanceRef.current += haversine(lastPointRef.current, point);
+    filterRef.current = new GpsFilter();
+
+    await startTracking((raw) => {
+      const filtered = filterRef.current!.process(raw);
+      if (filtered && lastPointRef.current) {
+        distanceRef.current += haversine(lastPointRef.current, filtered);
       }
-      lastPointRef.current = point;
+      if (filtered) lastPointRef.current = filtered;
       setDistance(distanceRef.current);
 
       // Compute elapsed from wall clock — setInterval is suspended in background

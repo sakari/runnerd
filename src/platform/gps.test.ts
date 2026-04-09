@@ -54,22 +54,20 @@ describe("startTracking", () => {
     expect(Location.watchPositionAsync).toHaveBeenCalledWith(
       expect.objectContaining({
         accuracy: Location.Accuracy.High,
-        distanceInterval: 10,
+        distanceInterval: 0,
         timeInterval: 3000,
       }),
       expect.any(Function),
     );
   });
 
-  it("passes GPS points through the Kalman filter to callback", async () => {
+  it("passes raw GPS points to callback", async () => {
     const callback = vi.fn();
 
     await startTracking(callback);
 
-    // Get the location callback that was passed to watchPositionAsync
     const locationCallback = vi.mocked(Location.watchPositionAsync).mock.calls[0][1];
 
-    // Simulate a location update — first point initializes filter, second produces output
     locationCallback({
       coords: { latitude: 60.17, longitude: 24.94 },
       timestamp: 1000,
@@ -80,12 +78,17 @@ describe("startTracking", () => {
       timestamp: 4000,
     } as Location.LocationObject);
 
-    // The filter may suppress the first point (initialization) but should emit after that
-    expect(callback.mock.calls.length).toBeGreaterThanOrEqual(1);
-    const point = callback.mock.calls[callback.mock.calls.length - 1][0];
-    expect(point).toHaveProperty("latitude");
-    expect(point).toHaveProperty("longitude");
-    expect(point).toHaveProperty("timestamp");
+    expect(callback).toHaveBeenCalledTimes(2);
+    expect(callback.mock.calls[0][0]).toEqual({
+      latitude: 60.17,
+      longitude: 24.94,
+      timestamp: 1000,
+    });
+    expect(callback.mock.calls[1][0]).toEqual({
+      latitude: 60.1701,
+      longitude: 24.9401,
+      timestamp: 4000,
+    });
   });
 
   it("does not start a second subscription if already tracking", async () => {
