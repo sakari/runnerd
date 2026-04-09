@@ -8,9 +8,7 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#123270"
     },
     "ios": {
       "supportsTablet": false,
@@ -24,7 +22,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#2864B4"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

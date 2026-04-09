@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, TextInput, StyleSheet } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { Ionicons } from "@expo/vector-icons";
 import { GeoPoint, VoiceEvent, TargetDurationMinutes } from "../core/types";
 import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
 import { buildCallout, checkTriggers } from "../core/voice-triggers";
@@ -18,6 +19,7 @@ export default function TimerScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const distanceRef = useRef(0);
   const lastPointRef = useRef<GeoPoint | null>(null);
+  const targetDurationRef = useRef<TargetDurationMinutes | null>(null);
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -64,6 +66,25 @@ export default function TimerScreen() {
       }
       lastPointRef.current = point;
       setDistance(distanceRef.current);
+
+      // Compute elapsed from wall clock — setInterval is suspended in background
+      const currentElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
+      setElapsed(currentElapsed);
+
+      // Check voice triggers directly in the GPS callback so they fire
+      // even when the app is backgrounded (React effects don't run in background)
+      const targetSec = targetDurationRef.current != null ? targetDurationRef.current * 60 : null;
+      const events = checkTriggers(
+        distanceRef.current,
+        null,
+        firedRef.current,
+        currentElapsed,
+        targetSec,
+      );
+      for (const e of events) {
+        firedRef.current.add(e);
+        speak(buildCallout(e, currentElapsed, distanceRef.current));
+      }
     });
   }, [reset]);
 
@@ -86,53 +107,107 @@ export default function TimerScreen() {
   const targetSeconds = targetDuration != null ? targetDuration * 60 : null;
   const remaining = targetSeconds != null ? Math.max(0, targetSeconds - elapsed) : null;
 
-  // Check voice triggers on distance/elapsed change
+  // Keep targetDurationRef in sync so the GPS callback can access it
   useEffect(() => {
-    if (!running) return;
-    const events = checkTriggers(distance, null, firedRef.current, elapsed, targetSeconds);
-    for (const e of events) {
-      firedRef.current.add(e);
-      speak(buildCallout(e, elapsed, distance));
-    }
-  }, [distance, elapsed, running, targetSeconds]);
+    targetDurationRef.current = targetDuration;
+  }, [targetDuration]);
 
-  const durations: TargetDurationMinutes[] = [30, 60];
+  const [customInput, setCustomInput] = useState("");
+  const presets = [30, 60];
+
+  const selectPreset = (d: number) => {
+    if (targetDuration === d) {
+      setTargetDuration(null);
+      setCustomInput("");
+    } else {
+      setTargetDuration(d);
+      setCustomInput("");
+    }
+  };
+
+  const applyCustom = () => {
+    const mins = parseFloat(customInput);
+    if (!isNaN(mins) && mins > 0) {
+      setTargetDuration(mins);
+    }
+  };
 
   return (
     <View style={styles.container}>
       {!running && (
-        <View style={styles.durationRow}>
-          {durations.map((d) => (
-            <Pressable
-              key={d}
-              style={[styles.durationChip, targetDuration === d && styles.durationChipActive]}
-              onPress={() => setTargetDuration(targetDuration === d ? null : d)}
-            >
-              <Text
-                style={[
-                  styles.durationChipText,
-                  targetDuration === d && styles.durationChipTextActive,
-                ]}
+        <View style={styles.durationSection}>
+          <View style={styles.durationRow}>
+            {presets.map((d) => (
+              <Pressable
+                key={d}
+                style={[styles.durationChip, targetDuration === d && styles.durationChipActive]}
+                onPress={() => selectPreset(d)}
               >
-                {d}m
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.durationChipText,
+                    targetDuration === d && styles.durationChipTextActive,
+                  ]}
+                >
+                  {d}m
+                </Text>
+              </Pressable>
+            ))}
+            <View style={styles.customInputRow}>
+              <TextInput
+                style={styles.customInput}
+                value={customInput}
+                onChangeText={(text) => {
+                  setCustomInput(text);
+                  setTargetDuration(null);
+                }}
+                onSubmitEditing={applyCustom}
+                placeholder="min"
+                placeholderTextColor="#555"
+                keyboardType="numeric"
+                returnKeyType="done"
+              />
+              <Pressable
+                style={[styles.durationChip, styles.customApply]}
+                onPress={applyCustom}
+                disabled={!customInput}
+              >
+                <Ionicons name="checkmark" size={18} color={customInput ? "#fff" : "#555"} />
+              </Pressable>
+            </View>
+          </View>
+          {targetDuration != null && (
+            <Text style={styles.targetLabel}>{targetDuration} min target</Text>
+          )}
         </View>
       )}
 
       <Text style={styles.time}>{formatDuration(elapsed)}</Text>
       {running && remaining != null && (
-        <Text style={styles.remaining}>{formatDuration(remaining)} left</Text>
+        <Text style={styles.remaining}>
+          <Ionicons name="hourglass-outline" size={16} color="#ff0" /> {formatDuration(remaining)}{" "}
+          left
+        </Text>
       )}
-      <Text style={styles.distance}>{formatDistance(distance)}</Text>
-      <Text style={styles.pace}>{formatPace(distance, elapsed)}</Text>
+      <View style={styles.statRow}>
+        <Ionicons name="map-outline" size={20} color="#0f0" />
+        <Text style={styles.distance}>{formatDistance(distance)}</Text>
+      </View>
+      <View style={styles.statRow}>
+        <Ionicons name="speedometer-outline" size={18} color="#aaa" />
+        <Text style={styles.pace}>{formatPace(distance, elapsed)}</Text>
+      </View>
 
       <Pressable
         style={[styles.button, running ? styles.stopButton : styles.startButton]}
         onPress={running ? handleStop : handleStart}
       >
-        <Text style={styles.buttonText}>{running ? "STOP" : "START"}</Text>
+        <Ionicons
+          name={running ? "stop" : "play"}
+          size={40}
+          color="#fff"
+          style={!running && styles.playIcon}
+        />
       </Pressable>
     </View>
   );
@@ -152,10 +227,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontVariant: ["tabular-nums"],
   },
+  statRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
   distance: {
     fontSize: 36,
     color: "#0f0",
-    marginTop: 8,
   },
   remaining: {
     fontSize: 20,
@@ -165,12 +245,43 @@ const styles = StyleSheet.create({
   pace: {
     fontSize: 24,
     color: "#aaa",
-    marginTop: 4,
+  },
+  playIcon: {
+    marginLeft: 4,
+  },
+  durationSection: {
+    alignItems: "center",
+    marginBottom: 24,
   },
   durationRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 12,
-    marginBottom: 24,
+  },
+  customInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  customInput: {
+    width: 60,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#555",
+    color: "#fff",
+    fontSize: 16,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  customApply: {
+    borderColor: "#555",
+    paddingHorizontal: 10,
+  },
+  targetLabel: {
+    color: "#1a1",
+    fontSize: 14,
+    marginTop: 8,
   },
   durationChip: {
     paddingHorizontal: 20,
@@ -204,10 +315,5 @@ const styles = StyleSheet.create({
   },
   stopButton: {
     backgroundColor: "#c00",
-  },
-  buttonText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#fff",
   },
 });

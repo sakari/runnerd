@@ -6,7 +6,6 @@ export async function requestPermissions(): Promise<boolean> {
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== "granted") return false;
 
-  // Also request background for when app is backgrounded
   await Location.requestBackgroundPermissionsAsync();
   return true;
 }
@@ -24,8 +23,8 @@ export async function startTracking(onPoint: GpsCallback): Promise<void> {
   subscription = await Location.watchPositionAsync(
     {
       accuracy: Location.Accuracy.High,
-      distanceInterval: 10, // meters — balances noise vs turn capture
-      timeInterval: 3000, // ms
+      distanceInterval: 10,
+      timeInterval: 3000,
     },
     (loc) => {
       const raw: GeoPoint = {
