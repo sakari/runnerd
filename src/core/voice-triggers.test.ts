@@ -40,4 +40,29 @@ describe("checkTriggers", () => {
     const events = checkTriggers(0, null, new Set(), 910, null);
     expect(events).toEqual([]);
   });
+
+  it("returns finish when elapsed reaches target duration", () => {
+    const events = checkTriggers(0, null, new Set(), 1800, 1800);
+    expect(events).toContain("finish");
+  });
+
+  it("returns finish when elapsed exceeds target duration", () => {
+    const events = checkTriggers(0, null, new Set(), 1850, 1800);
+    expect(events).toContain("finish");
+  });
+
+  it("does not fire finish before target duration", () => {
+    const events = checkTriggers(0, null, new Set(), 1799, 1800);
+    expect(events).not.toContain("finish");
+  });
+
+  it("does not re-fire finish", () => {
+    const events = checkTriggers(0, null, new Set(["finish"]), 1800, 1800);
+    expect(events).not.toContain("finish");
+  });
+
+  it("does not fire finish without target duration", () => {
+    const events = checkTriggers(0, null, new Set(), 1800, null);
+    expect(events).not.toContain("finish");
+  });
 });

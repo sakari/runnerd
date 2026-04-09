@@ -100,7 +100,9 @@ export default function TimerScreen() {
     const finalElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
     const finalDistance = distanceRef.current;
 
-    playCallout("finish");
+    if (!firedRef.current.has("finish")) {
+      playCallout("finish");
+    }
 
     const startedAt = startTimeRef.current
       ? new Date(startTimeRef.current).toISOString()

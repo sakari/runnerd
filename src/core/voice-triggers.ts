@@ -25,6 +25,9 @@ export function checkTriggers(
     if (elapsedSeconds >= targetDurationSeconds / 2 && !alreadyFired.has("time-halfway")) {
       events.push("time-halfway");
     }
+    if (elapsedSeconds >= targetDurationSeconds && !alreadyFired.has("finish")) {
+      events.push("finish");
+    }
   }
 
   return events;
