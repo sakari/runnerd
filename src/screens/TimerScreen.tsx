@@ -21,17 +21,17 @@ export default function TimerScreen() {
   const lastPointRef = useRef<GeoPoint | null>(null);
   const targetDurationRef = useRef<TargetDurationMinutes | null>(null);
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback(async () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    stopTracking();
+    await stopTracking();
     deactivateKeepAwake();
   }, []);
 
   // Cleanup on unmount
-  useEffect(() => cleanup, [cleanup]);
+  useEffect(() => () => { cleanup(); }, [cleanup]);
 
   const reset = useCallback(() => {
     setRunning(false);

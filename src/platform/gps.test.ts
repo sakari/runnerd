@@ -1,14 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockRemove } = vi.hoisted(() => ({
-  mockRemove: vi.fn(),
+const { mockDefineTask, taskCb } = vi.hoisted(() => ({
+  mockDefineTask: vi.fn(),
+  taskCb: { current: (_body: { data: unknown; error: unknown }) => {} },
+}));
+
+vi.mock("expo-task-manager", () => ({
+  defineTask: (name: string, cb: (body: { data: unknown; error: unknown }) => void) => {
+    mockDefineTask(name, cb);
+    taskCb.current = cb;
+  },
 }));
 
 vi.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: vi.fn().mockResolvedValue({ status: "granted" }),
   requestBackgroundPermissionsAsync: vi.fn().mockResolvedValue({ status: "granted" }),
-  watchPositionAsync: vi.fn().mockResolvedValue({ remove: mockRemove }),
+  startLocationUpdatesAsync: vi.fn().mockResolvedValue(undefined),
+  stopLocationUpdatesAsync: vi.fn().mockResolvedValue(undefined),
   Accuracy: { High: 5 },
+  ActivityType: { Fitness: 3 },
 }));
 
 import * as Location from "expo-location";
@@ -16,9 +26,8 @@ import { requestPermissions, startTracking, stopTracking } from "./gps";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Reset module-level subscription state by stopping any active tracking
+  // Reset module-level tracking state
   stopTracking();
-  mockRemove.mockClear();
 });
 
 describe("requestPermissions", () => {
@@ -46,18 +55,21 @@ describe("requestPermissions", () => {
 });
 
 describe("startTracking", () => {
-  it("starts watching position with high accuracy", async () => {
+  it("starts background location updates with fitness activity type", async () => {
     const callback = vi.fn();
 
     await startTracking(callback);
 
-    expect(Location.watchPositionAsync).toHaveBeenCalledWith(
+    expect(Location.startLocationUpdatesAsync).toHaveBeenCalledWith(
+      "background-location",
       expect.objectContaining({
         accuracy: Location.Accuracy.High,
         distanceInterval: 10,
         timeInterval: 3000,
+        activityType: Location.ActivityType.Fitness,
+        showsBackgroundLocationIndicator: true,
+        pausesLocationUpdatesAutomatically: false,
       }),
-      expect.any(Function),
     );
   });
 
@@ -66,21 +78,25 @@ describe("startTracking", () => {
 
     await startTracking(callback);
 
-    // Get the location callback that was passed to watchPositionAsync
-    const locationCallback = vi.mocked(Location.watchPositionAsync).mock.calls[0][1];
+    // Simulate background task delivering locations
+    taskCb.current({
+      data: {
+        locations: [
+          { coords: { latitude: 60.17, longitude: 24.94 }, timestamp: 1000 },
+        ],
+      },
+      error: null,
+    });
 
-    // Simulate a location update — first point initializes filter, second produces output
-    locationCallback({
-      coords: { latitude: 60.17, longitude: 24.94 },
-      timestamp: 1000,
-    } as Location.LocationObject);
+    taskCb.current({
+      data: {
+        locations: [
+          { coords: { latitude: 60.1701, longitude: 24.9401 }, timestamp: 4000 },
+        ],
+      },
+      error: null,
+    });
 
-    locationCallback({
-      coords: { latitude: 60.1701, longitude: 24.9401 },
-      timestamp: 4000,
-    } as Location.LocationObject);
-
-    // The filter may suppress the first point (initialization) but should emit after that
     expect(callback.mock.calls.length).toBeGreaterThanOrEqual(1);
     const point = callback.mock.calls[callback.mock.calls.length - 1][0];
     expect(point).toHaveProperty("latitude");
@@ -94,22 +110,49 @@ describe("startTracking", () => {
     await startTracking(callback);
     await startTracking(callback);
 
-    expect(Location.watchPositionAsync).toHaveBeenCalledOnce();
+    expect(Location.startLocationUpdatesAsync).toHaveBeenCalledOnce();
+  });
+
+  it("ignores task callbacks with errors", async () => {
+    const callback = vi.fn();
+
+    await startTracking(callback);
+
+    taskCb.current({ data: null, error: new Error("GPS error") });
+
+    expect(callback).not.toHaveBeenCalled();
   });
 });
 
 describe("stopTracking", () => {
-  it("removes the location subscription", async () => {
+  it("stops location updates", async () => {
     await startTracking(vi.fn());
 
-    stopTracking();
+    await stopTracking();
 
-    expect(mockRemove).toHaveBeenCalledOnce();
+    expect(Location.stopLocationUpdatesAsync).toHaveBeenCalledWith("background-location");
   });
 
-  it("does nothing if not tracking", () => {
-    stopTracking();
+  it("does nothing if not tracking", async () => {
+    await stopTracking();
 
-    expect(mockRemove).not.toHaveBeenCalled();
+    expect(Location.stopLocationUpdatesAsync).not.toHaveBeenCalled();
+  });
+
+  it("stops delivering points after stopping", async () => {
+    const callback = vi.fn();
+    await startTracking(callback);
+    await stopTracking();
+
+    taskCb.current({
+      data: {
+        locations: [
+          { coords: { latitude: 60.17, longitude: 24.94 }, timestamp: 1000 },
+        ],
+      },
+      error: null,
+    });
+
+    expect(callback).not.toHaveBeenCalled();
   });
 });
