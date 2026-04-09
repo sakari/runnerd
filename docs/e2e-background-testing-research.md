@@ -27,7 +27,85 @@ The key scenarios to verify:
 
 ## Framework Comparison
 
-### Detox (recommended for runnerd)
+### Maestro (recommended for runnerd)
+
+Black-box framework with YAML-based tests. [Officially recommended by Expo](https://docs.expo.dev/eas/workflows/examples/e2e-tests/) for E2E testing.
+
+**Pros:**
+- `setLocation:` command mocks GPS coordinates
+- `pressKey: Home` backgrounds the app
+- `launchApp:` with `stopApp: false` foregrounds from background
+- Zero-code YAML syntax, very fast to write
+- Built-in retry/wait logic, low flakiness (<1% reported)
+- No React Native version compatibility issues (black-box, framework-agnostic)
+- Works with Expo development builds out of the box
+- Handles system-level elements (permission dialogs, notifications) automatically
+
+**Cons:**
+- Black-box only -- cannot observe internal state (distance accumulation) directly
+- Cannot verify audio playback programmatically
+- iOS support is simulator-only (physical device support is new/limited)
+- Must rely on visible UI text for assertions
+- `setLocation` sets a single point; cannot replay a GPX route natively
+
+**Background + location test example:**
+
+```yaml
+# .maestro/background-location.yaml
+appId: com.runnerd.app
+
+- launchApp
+
+# Start a run
+- tapOn:
+    id: "start-button"
+
+# Set starting location (Central Park south entrance)
+- setLocation:
+    latitude: 40.7644
+    longitude: -73.9735
+
+- wait: 4000
+
+# Background the app
+- pressKey: Home
+- wait: 1000
+
+# Simulate walking north through Central Park (~500m, 5 points)
+- setLocation:
+    latitude: 40.7654
+    longitude: -73.9732
+- wait: 3000
+- setLocation:
+    latitude: 40.7664
+    longitude: -73.9729
+- wait: 3000
+- setLocation:
+    latitude: 40.7674
+    longitude: -73.9726
+- wait: 3000
+- setLocation:
+    latitude: 40.7684
+    longitude: -73.9723
+- wait: 3000
+- setLocation:
+    latitude: 40.7694
+    longitude: -73.9720
+- wait: 3000
+
+# Foreground the app
+- launchApp:
+    stopApp: false
+
+# Assert distance is visible and non-zero
+- assertVisible:
+    id: "distance-display"
+- assertNotEqual:
+    id: "distance-display"
+    text: "0.00"
+```
+
+### Detox
 
 Gray-box framework by Wix, designed specifically for React Native.
 
@@ -40,9 +118,15 @@ Gray-box framework by Wix, designed specifically for React Native.
 - JavaScript/TypeScript test authoring -- matches the codebase
 
 **Cons:**
+- **Known compatibility issues with RN 0.81 + New Architecture** --
+  [Issue #4849](https://github.com/wix/Detox/issues/4849) reports test failures,
+  [Issue #4842](https://github.com/wix/Detox/issues/4842) reports NullPointerException
+  in NetworkIdlingResource. Since runnerd uses RN 0.81 with `newArchEnabled: true`,
+  this is a significant risk.
 - Requires a native build (not Expo Go)
 - Cannot interact with system UI (permission dialogs need `launchApp` permissions config)
 - `setLocation` only sets a point; no built-in GPX route playback (but you can loop)
+- Expo support is community-driven, not officially maintained
 
 **Background + location test example:**
 
@@ -92,75 +176,6 @@ describe("Background location tracking", () => {
     await expect(distanceEl).not.toHaveText("0.00");
   });
 });
-```
-
-### Maestro
-
-Black-box framework with YAML-based tests. Simpler setup, but less control.
-
-**Pros:**
-- `setLocation:` command mocks GPS coordinates
-- `pressKey: Home` backgrounds the app
-- `launchApp:` with `stopApp: false` foregrounds from background
-- Zero-code YAML syntax, very fast to write
-- Built-in retry/wait logic, low flakiness
-
-**Cons:**
-- Black-box only -- cannot observe internal state (distance accumulation)
-- Cannot verify audio playback programmatically
-- iOS support is simulator-only (physical device support is new/limited)
-- No native assertion on React state -- must rely on visible UI text
-
-**Background location test example:**
-
-```yaml
-# e2e/background-location.yaml
-appId: com.runnerd.app
-
-- launchApp
-
-# Grant location permission (first launch)
-- tapOn: "Allow While Using App"
-- tapOn: "Change to Always Allow"
-
-# Start a run
-- tapOn:
-    id: "start-button"
-
-# Set starting location
-- setLocation:
-    latitude: 40.7644
-    longitude: -73.9735
-- waitForAnimationToEnd
-
-# Background the app
-- pressKey: Home
-- wait: 3000
-
-# Simulate movement (5 points, ~500m north)
-- setLocation:
-    latitude: 40.7664
-    longitude: -73.9729
-- wait: 3000
-- setLocation:
-    latitude: 40.7684
-    longitude: -73.9723
-- wait: 3000
-- setLocation:
-    latitude: 40.7694
-    longitude: -73.9720
-- wait: 3000
-
-# Foreground the app
-- launchApp:
-    stopApp: false
-
-# Assert distance is visible and non-zero
-- assertVisible:
-    id: "distance-display"
-- assertNotEqual:
-    id: "distance-display"
-    text: "0.00"
 ```
 
 ### Appium
@@ -273,10 +288,17 @@ if (__DEV__) {
 }
 ```
 
-Then in Detox:
+Then in Maestro:
+
+```yaml
+- assertVisible:
+    id: "debug-speech-label"
+    text: "halfway"
+```
+
+Or in Detox:
 
 ```typescript
-// Assert the callout fired by checking a dev-only text element
 await expect(element(by.id("debug-speech-label"))).toHaveText("halfway");
 ```
 
@@ -299,11 +321,17 @@ lock-screen scenario.
 
 ## Recommended Setup for Runnerd
 
-### Phase 1: Detox with Expo dev build (automated)
+### Phase 1: Maestro with Expo dev build (automated)
 
-1. **Add Detox dependencies:**
+Maestro is recommended over Detox because:
+- Expo officially documents and supports Maestro for E2E testing
+- No RN 0.81 / New Architecture compatibility issues (black-box, framework-agnostic)
+- Simpler setup (YAML, no build system integration needed)
+- `setLocation` and `pressKey: Home` cover the two critical background scenarios
+
+1. **Install Maestro on your Mac:**
    ```bash
-   pnpm add -D detox @config-plugins/detox jest
+   curl -Ls "https://get.maestro.mobile.dev" | bash
    ```
 
 2. **Add EAS build profile** for simulator testing in `eas.json`:
@@ -311,58 +339,61 @@ lock-screen scenario.
    {
      "build": {
        "e2e-simulator": {
-         "developmentClient": true,
-         "distribution": "internal",
          "ios": {
            "simulator": true,
-           "resourceClass": "m-medium"
+           "buildConfiguration": "Release"
+         },
+         "env": {
+           "EXPO_PUBLIC_E2E": "true"
          }
        }
      }
    }
    ```
 
-3. **Create `.detoxrc.js`:**
-   ```js
-   module.exports = {
-     testRunner: {
-       args: { $0: "jest", config: "e2e/jest.config.js" },
-       jest: { setupTimeout: 120000 },
-     },
-     apps: {
-       "ios.release": {
-         type: "ios.app",
-         binaryPath: "bin/runnerd.app",
-       },
-     },
-     devices: {
-       simulator: {
-         type: "ios.simulator",
-         device: { type: "iPhone 16" },
-       },
-     },
-     configurations: {
-       "ios.sim.release": {
-         device: "simulator",
-         app: "ios.release",
-       },
-     },
-   };
-   ```
-
-4. **Add `testID` props** to key UI elements:
+3. **Add `testID` props** to key UI elements:
    - Start/stop button: `testID="start-button"`
    - Distance display: `testID="distance-display"`
    - Timer display: `testID="timer-display"`
    - Pace display: `testID="pace-display"`
 
+4. **Create test flows in `.maestro/`:**
+   ```yaml
+   # .maestro/background-location.yaml
+   appId: com.runnerd.app
+   ---
+   - launchApp
+   - tapOn:
+       id: "start-button"
+   - setLocation:
+       latitude: 40.7644
+       longitude: -73.9735
+   - wait: 4000
+   - pressKey: Home
+   - setLocation:
+       latitude: 40.7674
+       longitude: -73.9726
+   - wait: 3000
+   - setLocation:
+       latitude: 40.7694
+       longitude: -73.9720
+   - wait: 3000
+   - launchApp:
+       stopApp: false
+   - assertVisible:
+       id: "distance-display"
+   ```
+
 5. **Build and test on your Mac:**
    ```bash
-   # Build with EAS (or locally with npx expo prebuild + xcodebuild)
+   # Build for simulator
    eas build --profile e2e-simulator --platform ios --local
 
-   # Run Detox
-   npx detox test --configuration ios.sim.release
+   # Install on simulator (drag .app to simulator, or use xcrun)
+   xcrun simctl install booted bin/runnerd.app
+
+   # Run Maestro tests
+   maestro test .maestro/
    ```
 
 ### Phase 2: Manual acceptance tests (real device, lock screen)
@@ -378,7 +409,7 @@ For the TTS-on-lock-screen scenario that can't be automated:
 
 ### Phase 3: CI integration (optional)
 
-Detox tests can run on macOS GitHub Actions runners with Xcode:
+Maestro tests can run via EAS Workflows (Expo's CI) or macOS GitHub Actions:
 
 ```yaml
 # .github/workflows/e2e.yml
@@ -392,12 +423,14 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install
-      - run: brew tap wix/brew && brew install applesimutils
-      - run: npx detox build --configuration ios.sim.release
-      - run: npx detox test --configuration ios.sim.release
+      - run: curl -Ls "https://get.maestro.mobile.dev" | bash
+      - run: xcrun simctl boot "iPhone 16"
+      - run: xcrun simctl install booted bin/runnerd.app
+      - run: maestro test .maestro/
 ```
 
 Note: macOS runners are significantly more expensive than Linux runners.
+EAS Workflows has built-in Maestro support as a cheaper alternative.
 
 ---
 
@@ -405,25 +438,30 @@ Note: macOS runners are significantly more expensive than Linux runners.
 
 | Approach | Best for | Limitation |
 |----------|----------|------------|
-| **Detox** | Background location accumulation, app lifecycle | Cannot verify actual audio output |
-| **Maestro** | Quick smoke tests, visual regression | Cannot observe internal state |
+| **Maestro** | Background location, app lifecycle, permission flows | Cannot verify audio output or internal state |
+| **Detox** | Gray-box testing with JS synchronization | RN 0.81 + New Arch compatibility issues |
 | **Manual real-device** | Lock-screen TTS, silence.wav hack | Not automatable |
-| **xcrun simctl + GPX** | Realistic route simulation in CI | Simulator only |
+| **xcrun simctl + GPX** | Realistic route simulation in CI scripts | Simulator only |
 
-**Recommendation:** Start with Detox for the background location scenario (it's
-the highest-risk feature) and add `testID` props to the UI. Use manual testing on
-a real device for the lock-screen TTS verification. Maestro is a good addition
-later for visual smoke tests.
+**Recommendation:** Start with **Maestro** for the background location scenario
+(it's the highest-risk feature, and Maestro is Expo's officially recommended E2E
+framework). Add `testID` props to the UI. Use manual testing on a real device for
+the lock-screen TTS verification. Consider Detox later if you need gray-box
+testing, but watch the RN 0.81 compatibility issues first.
 
 Sources:
-- [Detox Device API](https://wix.github.io/Detox/docs/api/device/)
+- [Expo E2E testing with Maestro (official docs)](https://docs.expo.dev/eas/workflows/examples/e2e-tests/)
 - [Maestro setLocation docs](https://docs.maestro.dev/api-reference/commands/setlocation)
-- [Maestro Commands reference](https://docs.maestro.dev/api-reference/commands)
+- [Maestro pressKey docs](https://docs.maestro.dev/api-reference/commands/presskey)
+- [Maestro launchApp docs](https://docs.maestro.dev/api-reference/commands/launchapp)
+- [Maestro iOS platform support](https://docs.maestro.dev/get-started/supported-platform/ios)
+- [Detox Device API](https://wix.github.io/Detox/docs/api/device/)
+- [Detox RN 0.81 compatibility issue](https://github.com/wix/Detox/issues/4849)
+- [Detox New Arch + RN 0.81 issue](https://github.com/wix/Detox/issues/4842)
 - [Expo Location SDK](https://docs.expo.dev/versions/latest/sdk/location/)
 - [Expo Background Task](https://docs.expo.dev/versions/latest/sdk/background-task/)
 - [Apple: Simulating location in tests](https://developer.apple.com/documentation/xcode/simulating-location-in-tests)
 - [Location simulation in Xcode Simulator (SwiftLee)](https://www.avanderlee.com/workflow/location-simulation-xcode-simulator/)
 - [set-simulator-location CLI](https://github.com/MobileNativeFoundation/set-simulator-location)
 - [Detox vs Maestro vs Appium comparison (PkgPulse)](https://www.pkgpulse.com/blog/detox-vs-maestro-vs-appium-react-native-e2e-testing-2026)
-- [Expo + Detox setup (Expo blog)](https://blog.expo.dev/testing-expo-apps-with-detox-and-react-native-testing-library-7fbdbb82ac87)
 - [E2E tests with Expo dev client](https://medium.com/@Nicomalacho/e2e-tests-with-expo-development-client-b6c95b0678b3)
