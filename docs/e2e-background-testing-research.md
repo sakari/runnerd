@@ -429,8 +429,11 @@ jobs:
       - run: maestro test .maestro/
 ```
 
-Note: macOS runners are significantly more expensive than Linux runners.
-EAS Workflows has built-in Maestro support as a cheaper alternative.
+Note: GitHub Actions free tier includes macOS runners, but each macOS minute
+counts as 10 minutes against your monthly quota (2,000 min on Free plan =
+~200 actual macOS minutes). Public repos get unlimited free runner minutes.
+EAS Workflows has built-in Maestro support as a cheaper alternative for
+private repos.
 
 ---
 
