@@ -1,34 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCallout, checkTriggers } from "./voice-triggers";
-
-describe("buildCallout", () => {
-  it("builds start callout", () => {
-    const c = buildCallout("start", 0, 0);
-    expect(c.event).toBe("start");
-    expect(c.text).toContain("started");
-  });
-
-  it("builds halfway callout with stats", () => {
-    const c = buildCallout("halfway", 900, 2500);
-    expect(c.event).toBe("halfway");
-    expect(c.text).toContain("Halfway");
-    expect(c.text).toContain("2.50 km");
-  });
-
-  it("builds time-halfway callout with stats", () => {
-    const c = buildCallout("time-halfway", 900, 2500);
-    expect(c.event).toBe("time-halfway");
-    expect(c.text).toContain("Halfway");
-    expect(c.text).toContain("15:00");
-  });
-
-  it("builds finish callout with stats", () => {
-    const c = buildCallout("finish", 1800, 5000);
-    expect(c.event).toBe("finish");
-    expect(c.text).toContain("complete");
-    expect(c.text).toContain("5.00 km");
-  });
-});
+import { checkTriggers } from "./voice-triggers";
 
 describe("checkTriggers", () => {
   it("returns nothing without a target", () => {

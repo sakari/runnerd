@@ -4,10 +4,10 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
 import { GeoPoint, VoiceEvent, TargetDurationMinutes } from "../core/types";
 import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
-import { buildCallout, checkTriggers } from "../core/voice-triggers";
+import { checkTriggers } from "../core/voice-triggers";
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
-import { speak } from "../platform/speech";
+import { playCallout } from "../platform/speech";
 
 export default function TimerScreen() {
   const [running, setRunning] = useState(false);
@@ -57,7 +57,7 @@ export default function TimerScreen() {
       }
     }, 1000);
 
-    speak(buildCallout("start", 0, 0));
+    playCallout("start");
     firedRef.current.add("start");
 
     await startTracking((point) => {
@@ -83,7 +83,7 @@ export default function TimerScreen() {
       );
       for (const e of events) {
         firedRef.current.add(e);
-        speak(buildCallout(e, currentElapsed, distanceRef.current));
+        playCallout(e);
       }
     });
   }, [reset]);
@@ -95,7 +95,7 @@ export default function TimerScreen() {
     const finalElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
     const finalDistance = distanceRef.current;
 
-    speak(buildCallout("finish", finalElapsed, finalDistance));
+    playCallout("finish");
 
     const startedAt = startTimeRef.current
       ? new Date(startTimeRef.current).toISOString()
