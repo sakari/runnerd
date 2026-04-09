@@ -16,7 +16,10 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Runnerd uses your location to track distance during runs.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Runnerd uses your location in the background to keep tracking your run.",
-        "UIBackgroundModes": ["location", "audio"]
+        "UIBackgroundModes": [
+          "location",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -29,6 +32,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-sqlite"
+    ]
   }
 }
