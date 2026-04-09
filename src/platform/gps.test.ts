@@ -64,7 +64,7 @@ describe("startTracking", () => {
       "background-location",
       expect.objectContaining({
         accuracy: Location.Accuracy.High,
-        distanceInterval: 0,
+        distanceInterval: 10,
         timeInterval: 3000,
         activityType: Location.ActivityType.Fitness,
         showsBackgroundLocationIndicator: true,

@@ -44,7 +44,7 @@ export async function startTracking(onPoint: GpsCallback): Promise<void> {
 
   await Location.startLocationUpdatesAsync(LOCATION_TASK, {
     accuracy: Location.Accuracy.High,
-    distanceInterval: 0,
+    distanceInterval: 10,
     timeInterval: 3000,
     activityType: Location.ActivityType.Fitness,
     showsBackgroundLocationIndicator: true,
