@@ -8,6 +8,7 @@ import { checkTriggers } from "../core/voice-triggers";
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
 import { playCallout } from "../platform/speech";
+import { releaseAudioSession } from "../platform/audio-session";
 
 export default function TimerScreen() {
   const [running, setRunning] = useState(false);
@@ -27,6 +28,7 @@ export default function TimerScreen() {
       timerRef.current = null;
     }
     await stopTracking();
+    releaseAudioSession();
     deactivateKeepAwake();
   }, []);
 
