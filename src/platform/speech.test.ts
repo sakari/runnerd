@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { mockUnloadAsync, mockPlayAsync, mockSetOnPlaybackStatusUpdate } = vi.hoisted(() => ({
-  mockUnloadAsync: vi.fn(),
+  mockUnloadAsync: vi.fn().mockResolvedValue(undefined),
   mockPlayAsync: vi.fn(),
   mockSetOnPlaybackStatusUpdate: vi.fn(),
 }));
@@ -23,7 +23,7 @@ vi.mock("expo-av", () => ({
       }),
     },
   },
-  InterruptionModeIOS: { DuckOthers: 2 },
+  InterruptionModeIOS: { DuckOthers: 2, MixWithOthers: 1 },
   InterruptionModeAndroid: { DuckOthers: 2 },
 }));
 
@@ -60,7 +60,7 @@ describe("playCallout", () => {
     expect(mockPlayAsync).toHaveBeenCalledOnce();
   });
 
-  it("registers a callback to unload when finished", async () => {
+  it("registers a callback to unload and deactivate session when finished", async () => {
     await playCallout("start");
 
     expect(mockSetOnPlaybackStatusUpdate).toHaveBeenCalledOnce();
@@ -70,9 +70,20 @@ describe("playCallout", () => {
     callback({ isLoaded: true, didJustFinish: false });
     expect(mockUnloadAsync).not.toHaveBeenCalled();
 
-    // Should unload when finished
+    // Should unload and deactivate audio session when finished
+    vi.mocked(Audio.setAudioModeAsync).mockClear();
     callback({ isLoaded: true, didJustFinish: true });
     expect(mockUnloadAsync).toHaveBeenCalledOnce();
+
+    // Wait for the chained deactivation
+    await vi.waitFor(() => {
+      expect(Audio.setAudioModeAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          playsInSilentModeIOS: false,
+          shouldDuckAndroid: false,
+        }),
+      );
+    });
   });
 
   it("plays the correct asset for finish event", async () => {

@@ -9,3 +9,13 @@ export async function ensureAudioSession(): Promise<void> {
     shouldDuckAndroid: true,
   });
 }
+
+export async function deactivateAudioSession(): Promise<void> {
+  await Audio.setAudioModeAsync({
+    playsInSilentModeIOS: false,
+    staysActiveInBackground: false,
+    interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+    shouldDuckAndroid: false,
+  });
+}
