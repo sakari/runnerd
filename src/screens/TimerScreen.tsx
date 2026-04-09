@@ -8,10 +8,7 @@ import { haversine, formatDuration, formatDistance, formatPace } from "../core/g
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
 import { playCallout, preloadCallouts, unloadCallouts } from "../platform/speech";
-import {
-  scheduleTimeNotifications,
-  cancelTimeNotifications,
-} from "../platform/time-notifications";
+import { scheduleTimeNotifications, cancelTimeNotifications } from "../platform/time-notifications";
 
 export default function TimerScreen() {
   const [running, setRunning] = useState(false);
@@ -86,7 +83,6 @@ export default function TimerScreen() {
       // Compute elapsed from wall clock — setInterval is suspended in background
       const currentElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
       setElapsed(currentElapsed);
-
     });
   }, [reset]);
 

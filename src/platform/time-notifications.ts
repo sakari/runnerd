@@ -5,9 +5,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   return status === "granted";
 }
 
-export async function scheduleTimeNotifications(
-  targetDurationSeconds: number,
-): Promise<void> {
+export async function scheduleTimeNotifications(targetDurationSeconds: number): Promise<void> {
   const halfway = Math.floor(targetDurationSeconds / 2);
 
   await Notifications.scheduleNotificationAsync({
