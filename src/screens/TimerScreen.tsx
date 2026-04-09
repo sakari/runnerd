@@ -8,6 +8,10 @@ import { checkTriggers } from "../core/voice-triggers";
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
 import { playCallout, preloadCallouts, unloadCallouts } from "../platform/speech";
+import {
+  scheduleTimeNotifications,
+  cancelTimeNotifications,
+} from "../platform/time-notifications";
 
 export default function TimerScreen() {
   const [running, setRunning] = useState(false);
@@ -27,6 +31,7 @@ export default function TimerScreen() {
       timerRef.current = null;
     }
     await stopTracking();
+    await cancelTimeNotifications();
     await unloadCallouts();
     deactivateKeepAwake();
   }, []);
@@ -67,6 +72,13 @@ export default function TimerScreen() {
     playCallout("start");
     firedRef.current.add("start");
 
+    // Schedule time-based notifications (halfway, finish) via OS notifications
+    // so they fire reliably even when backgrounded/locked
+    const targetSec = targetDurationRef.current != null ? targetDurationRef.current * 60 : null;
+    if (targetSec != null && targetSec > 0) {
+      scheduleTimeNotifications(targetSec);
+    }
+
     await startTracking((point) => {
       if (lastPointRef.current) {
         distanceRef.current += haversine(lastPointRef.current, point);
@@ -76,19 +88,10 @@ export default function TimerScreen() {
 
       // Compute elapsed from wall clock — setInterval is suspended in background
       const currentElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
-      console.log(`[gps] callback fired, elapsed=${currentElapsed.toFixed(0)}s dist=${distanceRef.current.toFixed(0)}m`);
       setElapsed(currentElapsed);
 
-      // Check voice triggers directly in the GPS callback so they fire
-      // even when the app is backgrounded (React effects don't run in background)
-      const targetSec = targetDurationRef.current != null ? targetDurationRef.current * 60 : null;
-      const events = checkTriggers(
-        distanceRef.current,
-        null,
-        firedRef.current,
-        currentElapsed,
-        targetSec,
-      );
+      // Check distance-based voice triggers in the GPS callback
+      const events = checkTriggers(distanceRef.current, null, firedRef.current);
       for (const e of events) {
         firedRef.current.add(e);
         playCallout(e);

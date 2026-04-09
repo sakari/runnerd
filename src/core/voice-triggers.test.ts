@@ -6,7 +6,7 @@ describe("checkTriggers", () => {
     expect(checkTriggers(2500, null, new Set())).toEqual([]);
   });
 
-  it("returns halfway when past half of target", () => {
+  it("returns halfway when past half of target distance", () => {
     const events = checkTriggers(2600, 5000, new Set());
     expect(events).toContain("halfway");
   });
@@ -19,50 +19,5 @@ describe("checkTriggers", () => {
   it("does not fire halfway before half distance", () => {
     const events = checkTriggers(1000, 5000, new Set());
     expect(events).toEqual([]);
-  });
-
-  it("returns time-halfway when past half of target duration", () => {
-    const events = checkTriggers(0, null, new Set(), 910, 1800);
-    expect(events).toContain("time-halfway");
-  });
-
-  it("does not fire time-halfway before half duration", () => {
-    const events = checkTriggers(0, null, new Set(), 800, 1800);
-    expect(events).toEqual([]);
-  });
-
-  it("does not re-fire time-halfway", () => {
-    const events = checkTriggers(0, null, new Set(["time-halfway"]), 910, 1800);
-    expect(events).not.toContain("time-halfway");
-  });
-
-  it("does not fire time-halfway without target duration", () => {
-    const events = checkTriggers(0, null, new Set(), 910, null);
-    expect(events).toEqual([]);
-  });
-
-  it("returns finish when elapsed reaches target duration", () => {
-    const events = checkTriggers(0, null, new Set(), 1800, 1800);
-    expect(events).toContain("finish");
-  });
-
-  it("returns finish when elapsed exceeds target duration", () => {
-    const events = checkTriggers(0, null, new Set(), 1850, 1800);
-    expect(events).toContain("finish");
-  });
-
-  it("does not fire finish before target duration", () => {
-    const events = checkTriggers(0, null, new Set(), 1799, 1800);
-    expect(events).not.toContain("finish");
-  });
-
-  it("does not re-fire finish", () => {
-    const events = checkTriggers(0, null, new Set(["finish"]), 1800, 1800);
-    expect(events).not.toContain("finish");
-  });
-
-  it("does not fire finish without target duration", () => {
-    const events = checkTriggers(0, null, new Set(), 1800, null);
-    expect(events).not.toContain("finish");
   });
 });

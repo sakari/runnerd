@@ -1,32 +1,23 @@
 import { VoiceEvent } from "./types";
 
 /**
- * Determine which voice events should fire given the current state.
+ * Determine which distance-based voice events should fire given the current state.
  * Returns events that haven't been announced yet.
  *
- * Halfway triggers when distance >= targetDistance / 2 (only if target is set).
+ * Time-based triggers (time-halfway, finish) are handled by OS notifications
+ * via time-notifications.ts — they don't belong here because the GPS callback
+ * doesn't fire reliably on iOS when stationary.
  */
 export function checkTriggers(
   distanceMeters: number,
   targetDistanceMeters: number | null,
   alreadyFired: Set<VoiceEvent>,
-  elapsedSeconds?: number,
-  targetDurationSeconds?: number | null,
 ): VoiceEvent[] {
   const events: VoiceEvent[] = [];
 
   if (targetDistanceMeters != null && targetDistanceMeters > 0) {
     if (distanceMeters >= targetDistanceMeters / 2 && !alreadyFired.has("halfway")) {
       events.push("halfway");
-    }
-  }
-
-  if (targetDurationSeconds != null && targetDurationSeconds > 0 && elapsedSeconds != null) {
-    if (elapsedSeconds >= targetDurationSeconds / 2 && !alreadyFired.has("time-halfway")) {
-      events.push("time-halfway");
-    }
-    if (elapsedSeconds >= targetDurationSeconds && !alreadyFired.has("finish")) {
-      events.push("finish");
     }
   }
 

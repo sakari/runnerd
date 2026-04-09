@@ -34,7 +34,16 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/callouts/halfway.wav",
+            "./assets/callouts/times-up.wav"
+          ]
+        }
+      ]
     ]
   }
 }
