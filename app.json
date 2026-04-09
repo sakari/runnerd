@@ -43,7 +43,8 @@
             "./assets/callouts/times_up.wav"
           ]
         }
-      ]
+      ],
+      "./plugins/with-local-notifications-only"
     ]
   }
 }
