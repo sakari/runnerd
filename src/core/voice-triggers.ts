@@ -1,31 +1,4 @@
 import { VoiceEvent } from "./types";
-import { formatDuration, formatDistance } from "./geo";
-
-export interface VoiceCallout {
-  event: VoiceEvent;
-  text: string;
-}
-
-/** Build the text for a voice callout. */
-export function buildCallout(
-  event: VoiceEvent,
-  elapsedSeconds: number,
-  distanceMeters: number,
-): VoiceCallout {
-  const time = formatDuration(elapsedSeconds);
-  const dist = formatDistance(distanceMeters);
-
-  switch (event) {
-    case "start":
-      return { event, text: "Run started. Let's go!" };
-    case "halfway":
-      return { event, text: `Halfway. ${dist} covered in ${time}.` };
-    case "time-halfway":
-      return { event, text: `Halfway. ${time} elapsed, ${dist} covered.` };
-    case "finish":
-      return { event, text: `Run complete. ${dist} in ${time}. Nice work!` };
-  }
-}
 
 /**
  * Determine which voice events should fire given the current state.
