@@ -76,6 +76,7 @@ export default function TimerScreen() {
 
       // Compute elapsed from wall clock — setInterval is suspended in background
       const currentElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
+      console.log(`[gps] callback fired, elapsed=${currentElapsed.toFixed(0)}s dist=${distanceRef.current.toFixed(0)}m`);
       setElapsed(currentElapsed);
 
       // Check voice triggers directly in the GPS callback so they fire
