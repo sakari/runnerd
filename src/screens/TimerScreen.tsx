@@ -7,7 +7,7 @@ import { haversine, formatDuration, formatDistance, formatPace } from "../core/g
 import { checkTriggers } from "../core/voice-triggers";
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
-import { playCallout } from "../platform/speech";
+import { playCallout, preloadCallouts, unloadCallouts } from "../platform/speech";
 
 export default function TimerScreen() {
   const [running, setRunning] = useState(false);
@@ -27,6 +27,7 @@ export default function TimerScreen() {
       timerRef.current = null;
     }
     await stopTracking();
+    await unloadCallouts();
     deactivateKeepAwake();
   }, []);
 
@@ -55,6 +56,7 @@ export default function TimerScreen() {
     setRunning(true);
     startTimeRef.current = Date.now();
     await activateKeepAwakeAsync();
+    await preloadCallouts();
 
     timerRef.current = setInterval(() => {
       if (startTimeRef.current) {
