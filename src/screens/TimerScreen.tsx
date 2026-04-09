@@ -2,19 +2,19 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { View, Text, Pressable, TextInput, StyleSheet } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
-import { GeoPoint, VoiceEvent, TargetDurationMinutes } from "../core/types";
+import { GeoPoint, TargetDurationMinutes } from "../core/types";
 import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
-import { checkTriggers } from "../core/voice-triggers";
+
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
-import { playCallout } from "../platform/speech";
+import { playCallout, preloadCallouts, unloadCallouts } from "../platform/speech";
+import { scheduleTimeNotifications, cancelTimeNotifications } from "../platform/time-notifications";
 
 export default function TimerScreen() {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
   const [targetDuration, setTargetDuration] = useState<TargetDurationMinutes | null>(null);
-  const firedRef = useRef<Set<VoiceEvent>>(new Set());
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const distanceRef = useRef(0);
@@ -27,6 +27,8 @@ export default function TimerScreen() {
       timerRef.current = null;
     }
     await stopTracking();
+    await cancelTimeNotifications();
+    await unloadCallouts();
     deactivateKeepAwake();
   }, []);
 
@@ -44,7 +46,6 @@ export default function TimerScreen() {
     setDistance(0);
     distanceRef.current = 0;
     lastPointRef.current = null;
-    firedRef.current = new Set();
     startTimeRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
@@ -55,6 +56,7 @@ export default function TimerScreen() {
     setRunning(true);
     startTimeRef.current = Date.now();
     await activateKeepAwakeAsync();
+    await preloadCallouts();
 
     timerRef.current = setInterval(() => {
       if (startTimeRef.current) {
@@ -63,7 +65,13 @@ export default function TimerScreen() {
     }, 1000);
 
     playCallout("start");
-    firedRef.current.add("start");
+
+    // Schedule time-based notifications (halfway, finish) via OS notifications
+    // so they fire reliably even when backgrounded/locked
+    const targetSec = targetDurationRef.current != null ? targetDurationRef.current * 60 : null;
+    if (targetSec != null && targetSec > 0) {
+      scheduleTimeNotifications(targetSec);
+    }
 
     await startTracking((point) => {
       if (lastPointRef.current) {
@@ -75,21 +83,6 @@ export default function TimerScreen() {
       // Compute elapsed from wall clock — setInterval is suspended in background
       const currentElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
       setElapsed(currentElapsed);
-
-      // Check voice triggers directly in the GPS callback so they fire
-      // even when the app is backgrounded (React effects don't run in background)
-      const targetSec = targetDurationRef.current != null ? targetDurationRef.current * 60 : null;
-      const events = checkTriggers(
-        distanceRef.current,
-        null,
-        firedRef.current,
-        currentElapsed,
-        targetSec,
-      );
-      for (const e of events) {
-        firedRef.current.add(e);
-        playCallout(e);
-      }
     });
   }, [reset]);
 

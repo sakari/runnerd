@@ -16,7 +16,10 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Runnerd uses your location to track distance during runs.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Runnerd uses your location in the background to keep tracking your run.",
-        "UIBackgroundModes": ["location", "audio"]
+        "UIBackgroundModes": [
+          "location",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -25,10 +28,24 @@
         "backgroundColor": "#2864B4"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.runnerd.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-sqlite",
+      "./plugins/with-local-notifications-only",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/callouts/halfway.wav",
+            "./assets/callouts/times_up.wav"
+          ]
+        }
+      ]
+    ]
   }
 }
