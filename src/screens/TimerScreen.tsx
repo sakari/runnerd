@@ -31,7 +31,12 @@ export default function TimerScreen() {
   }, []);
 
   // Cleanup on unmount
-  useEffect(() => () => { cleanup(); }, [cleanup]);
+  useEffect(
+    () => () => {
+      cleanup();
+    },
+    [cleanup],
+  );
 
   const reset = useCallback(() => {
     setRunning(false);

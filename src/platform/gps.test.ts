@@ -81,18 +81,14 @@ describe("startTracking", () => {
     // Simulate background task delivering locations
     taskCb.current({
       data: {
-        locations: [
-          { coords: { latitude: 60.17, longitude: 24.94 }, timestamp: 1000 },
-        ],
+        locations: [{ coords: { latitude: 60.17, longitude: 24.94 }, timestamp: 1000 }],
       },
       error: null,
     });
 
     taskCb.current({
       data: {
-        locations: [
-          { coords: { latitude: 60.1701, longitude: 24.9401 }, timestamp: 4000 },
-        ],
+        locations: [{ coords: { latitude: 60.1701, longitude: 24.9401 }, timestamp: 4000 }],
       },
       error: null,
     });
@@ -146,9 +142,7 @@ describe("stopTracking", () => {
 
     taskCb.current({
       data: {
-        locations: [
-          { coords: { latitude: 60.17, longitude: 24.94 }, timestamp: 1000 },
-        ],
+        locations: [{ coords: { latitude: 60.17, longitude: 24.94 }, timestamp: 1000 }],
       },
       error: null,
     });
