@@ -41,7 +41,7 @@
         {
           "sounds": [
             "./assets/callouts/halfway.wav",
-            "./assets/callouts/times-up.wav"
+            "./assets/callouts/times_up.wav"
           ]
         }
       ]

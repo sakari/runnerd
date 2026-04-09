@@ -27,7 +27,7 @@ export async function scheduleTimeNotifications(
     content: {
       title: "Time's up",
       body: "You've reached your target time",
-      sound: "times-up.wav",
+      sound: "times_up.wav",
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
