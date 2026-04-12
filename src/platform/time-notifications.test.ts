@@ -17,8 +17,6 @@ vi.mock("expo-notifications", () => ({
 
 import {
   requestNotificationPermissions,
-  playStartCallout,
-  playFinishCallout,
   scheduleTimeNotifications,
   cancelTimeNotifications,
   setupNotificationHandler,
@@ -37,30 +35,6 @@ describe("requestNotificationPermissions", () => {
   it("returns false when denied", async () => {
     mockRequestPermissions.mockResolvedValue({ status: "denied" });
     expect(await requestNotificationPermissions()).toBe(false);
-  });
-});
-
-describe("playStartCallout", () => {
-  it("fires an immediate notification with start sound", async () => {
-    await playStartCallout();
-
-    expect(mockSchedule).toHaveBeenCalledWith({
-      identifier: "run-start",
-      content: expect.objectContaining({ sound: "lets-go.wav" }),
-      trigger: null,
-    });
-  });
-});
-
-describe("playFinishCallout", () => {
-  it("fires an immediate notification with finish sound", async () => {
-    await playFinishCallout();
-
-    expect(mockSchedule).toHaveBeenCalledWith({
-      identifier: "run-callout",
-      content: expect.objectContaining({ sound: "times_up.wav" }),
-      trigger: null,
-    });
   });
 });
 
@@ -85,13 +59,11 @@ describe("scheduleTimeNotifications", () => {
 });
 
 describe("cancelTimeNotifications", () => {
-  it("cancels scheduled and dismisses all delivered notifications", async () => {
+  it("cancels scheduled and dismisses delivered notifications", async () => {
     await cancelTimeNotifications();
     expect(mockCancel).toHaveBeenCalledOnce();
-    expect(mockDismiss).toHaveBeenCalledWith("run-start");
     expect(mockDismiss).toHaveBeenCalledWith("run-halfway");
     expect(mockDismiss).toHaveBeenCalledWith("run-finish");
-    expect(mockDismiss).toHaveBeenCalledWith("run-callout");
   });
 });
 
@@ -99,13 +71,6 @@ describe("setupNotificationHandler", () => {
   it("registers a notification handler", () => {
     setupNotificationHandler();
     expect(mockSetHandler).toHaveBeenCalledOnce();
-  });
-
-  it("dismisses start notification when halfway fires", async () => {
-    setupNotificationHandler();
-    const handler = mockSetHandler.mock.calls[0][0];
-    await handler.handleNotification({ request: { identifier: "run-halfway" } });
-    expect(mockDismiss).toHaveBeenCalledWith("run-start");
   });
 
   it("dismisses halfway notification when finish fires", async () => {

@@ -7,12 +7,8 @@ import { haversine, formatDuration, formatDistance, formatPace } from "../core/g
 
 import { insertRun } from "../db/database";
 import { startTracking, stopTracking } from "../platform/gps";
-import {
-  playStartCallout,
-  playFinishCallout,
-  scheduleTimeNotifications,
-  cancelTimeNotifications,
-} from "../platform/time-notifications";
+import { playCallout } from "../platform/speech";
+import { scheduleTimeNotifications, cancelTimeNotifications } from "../platform/time-notifications";
 
 export default function TimerScreen() {
   const [running, setRunning] = useState(false);
@@ -66,7 +62,7 @@ export default function TimerScreen() {
       }
     }, 1000);
 
-    playStartCallout();
+    playCallout("start");
 
     // Schedule time-based notifications (halfway, finish) via OS notifications
     // so they fire reliably even when backgrounded/locked
@@ -95,7 +91,7 @@ export default function TimerScreen() {
     const finalElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
     const finalDistance = distanceRef.current;
 
-    playFinishCallout();
+    playCallout("finish");
 
     const startedAt = startTimeRef.current
       ? new Date(startTimeRef.current).toISOString()

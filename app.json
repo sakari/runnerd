@@ -17,7 +17,8 @@
         "NSLocationWhenInUseUsageDescription": "Runnerd uses your location to track distance during runs.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Runnerd uses your location in the background to keep tracking your run.",
         "UIBackgroundModes": [
-          "location"
+          "location",
+          "audio"
         ]
       }
     },
@@ -40,7 +41,6 @@
         "expo-notifications",
         {
           "sounds": [
-            "./assets/callouts/lets-go.wav",
             "./assets/callouts/halfway.wav",
             "./assets/callouts/times_up.wav"
           ]
