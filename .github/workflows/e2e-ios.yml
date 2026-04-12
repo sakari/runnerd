@@ -51,18 +51,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Prebuild iOS
-        run: pnpm expo prebuild --platform ios
+        run: pnpm expo prebuild --platform ios --no-install
 
-      - name: Diagnostics
-        run: |
-          echo "=== ios/ directory ==="
-          ls -la ios/ || echo "no ios/ directory"
-          echo "=== Xcode version ==="
-          xcodebuild -version
-          echo "=== Available schemes ==="
-          xcodebuild -workspace ios/runnerd.xcworkspace -list 2>&1 || echo "workspace listing failed"
-          echo "=== Available simulators ==="
-          xcrun simctl list devices available
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install --repo-update
 
       - name: Build for Simulator
         run: |
