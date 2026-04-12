@@ -1,5 +1,16 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, FlatList, Pressable, Modal, TextInput, Alert, StyleSheet, Animated, PanResponder } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  Modal,
+  TextInput,
+  Alert,
+  StyleSheet,
+  Animated,
+  PanResponder,
+} from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Run, Period, Summary } from "../core/types";
@@ -200,7 +211,9 @@ export default function HistoryScreen() {
             <View style={styles.modalButtons}>
               <Pressable style={styles.btnDelete} onPress={handleDelete}>
                 <Ionicons name="trash-outline" size={16} color="#f44" />
-                <Text style={styles.btnDeleteText}>{editingRun?.deletedAt ? "Deleted" : "Delete"}</Text>
+                <Text style={styles.btnDeleteText}>
+                  {editingRun?.deletedAt ? "Deleted" : "Delete"}
+                </Text>
               </Pressable>
               <Pressable style={styles.btnCancel} onPress={() => setEditingRun(null)}>
                 <Ionicons name="close" size={16} color="#aaa" />
@@ -321,10 +334,7 @@ function SwipeableRunRow({
           </View>
         </View>
       )}
-      <Animated.View
-        style={{ transform: [{ translateX }] }}
-        {...panResponder.panHandlers}
-      >
+      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
         <RunRow run={run} onPress={onPress} />
       </Animated.View>
     </View>
@@ -354,15 +364,21 @@ function RunRow({ run, onPress }: { run: Run; onPress: () => void }) {
       </View>
       <View style={styles.statLine}>
         <Ionicons name="map-outline" size={13} color={isDeleted ? "#555" : "#888"} />
-        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>{formatDistance(run.distanceMeters)}</Text>
+        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>
+          {formatDistance(run.distanceMeters)}
+        </Text>
       </View>
       <View style={styles.statLine}>
         <Ionicons name="time-outline" size={13} color={isDeleted ? "#555" : "#888"} />
-        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>{formatDuration(run.durationSeconds)}</Text>
+        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>
+          {formatDuration(run.durationSeconds)}
+        </Text>
       </View>
       <View style={styles.statLine}>
         <Ionicons name="speedometer-outline" size={13} color={isDeleted ? "#555" : "#888"} />
-        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>{formatPace(run.distanceMeters, run.durationSeconds)}</Text>
+        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>
+          {formatPace(run.distanceMeters, run.durationSeconds)}
+        </Text>
       </View>
     </Pressable>
   );

@@ -74,11 +74,7 @@ export async function updateRun(
 
 export async function softDeleteRun(id: number): Promise<void> {
   const d = await getDb();
-  await d.runAsync(
-    "UPDATE runs SET deleted_at = ? WHERE id = ?",
-    new Date().toISOString(),
-    id,
-  );
+  await d.runAsync("UPDATE runs SET deleted_at = ? WHERE id = ?", new Date().toISOString(), id);
 }
 
 export async function restoreRun(id: number): Promise<void> {
