@@ -5,6 +5,30 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   return status === "granted";
 }
 
+export async function playStartCallout(): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    identifier: "run-start",
+    content: {
+      title: "Let's go!",
+      body: "Run started",
+      sound: "lets-go.wav",
+    },
+    trigger: null,
+  });
+}
+
+export async function playFinishCallout(): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    identifier: "run-callout",
+    content: {
+      title: "Run complete",
+      body: "Nice work!",
+      sound: "times_up.wav",
+    },
+    trigger: null,
+  });
+}
+
 export async function scheduleTimeNotifications(targetDurationSeconds: number): Promise<void> {
   const halfway = Math.floor(targetDurationSeconds / 2);
 
@@ -39,15 +63,20 @@ export async function scheduleTimeNotifications(targetDurationSeconds: number): 
 
 export async function cancelTimeNotifications(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
+  await Notifications.dismissNotificationAsync("run-start");
   await Notifications.dismissNotificationAsync("run-halfway");
   await Notifications.dismissNotificationAsync("run-finish");
+  await Notifications.dismissNotificationAsync("run-callout");
 }
 
 export function setupNotificationHandler(): void {
   Notifications.setNotificationHandler({
     handleNotification: async (notification) => {
       const id = notification.request.identifier;
-      // When finish fires, dismiss the halfway notification
+      // Each new run callout dismisses the previous one
+      if (id === "run-halfway") {
+        await Notifications.dismissNotificationAsync("run-start");
+      }
       if (id === "run-finish") {
         await Notifications.dismissNotificationAsync("run-halfway");
       }
