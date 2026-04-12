@@ -1,11 +1,22 @@
-import React, { useState, useCallback } from "react";
-import { View, Text, FlatList, Pressable, Modal, TextInput, Alert, StyleSheet } from "react-native";
+import React, { useState, useCallback, useMemo } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  Modal,
+  TextInput,
+  Alert,
+  StyleSheet,
+  Animated,
+  PanResponder,
+} from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Run, Period, Summary } from "../core/types";
 import { formatDuration, formatDistance, formatPace } from "../core/geo";
 import { summarize } from "../core/summaries";
-import { getAllRuns, deleteRun, updateRun } from "../db/database";
+import { getAllRuns, softDeleteRun, restoreRun, updateRun } from "../db/database";
 
 const PERIODS: Period[] = ["week", "month", "year"];
 
@@ -94,20 +105,28 @@ export default function HistoryScreen() {
     reload();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!editingRun) return;
-    Alert.alert("Delete run?", "This cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          await deleteRun(editingRun.id);
-          setEditingRun(null);
-          reload();
-        },
-      },
-    ]);
+    await softDeleteRun(editingRun.id);
+    setEditingRun(null);
+    reload();
+  };
+
+  const handleRestore = async () => {
+    if (!editingRun) return;
+    await restoreRun(editingRun.id);
+    setEditingRun(null);
+    reload();
+  };
+
+  const handleSwipeDelete = async (id: number) => {
+    await softDeleteRun(id);
+    reload();
+  };
+
+  const handleSwipeRestore = async (id: number) => {
+    await restoreRun(id);
+    reload();
   };
 
   const summaries = summarize(runs, period);
@@ -156,7 +175,14 @@ export default function HistoryScreen() {
         <FlatList
           data={runs}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <RunRow run={item} onPress={() => openEdit(item)} />}
+          renderItem={({ item }) => (
+            <SwipeableRunRow
+              run={item}
+              onPress={() => openEdit(item)}
+              onDelete={() => handleSwipeDelete(item.id)}
+              onRestore={() => handleSwipeRestore(item.id)}
+            />
+          )}
           ListEmptyComponent={<Text style={styles.empty}>No runs yet</Text>}
         />
       )}
@@ -190,10 +216,17 @@ export default function HistoryScreen() {
             />
 
             <View style={styles.modalButtons}>
-              <Pressable style={styles.btnDelete} onPress={handleDelete}>
-                <Ionicons name="trash-outline" size={16} color="#f44" />
-                <Text style={styles.btnDeleteText}>Delete</Text>
-              </Pressable>
+              {editingRun?.deletedAt ? (
+                <Pressable style={styles.btnRestore} onPress={handleRestore}>
+                  <Ionicons name="refresh-outline" size={16} color="#1a1" />
+                  <Text style={styles.btnRestoreText}>Restore</Text>
+                </Pressable>
+              ) : (
+                <Pressable style={styles.btnDelete} onPress={handleDelete}>
+                  <Ionicons name="trash-outline" size={16} color="#f44" />
+                  <Text style={styles.btnDeleteText}>Delete</Text>
+                </Pressable>
+              )}
               <Pressable style={styles.btnCancel} onPress={() => setEditingRun(null)}>
                 <Ionicons name="close" size={16} color="#aaa" />
                 <Text style={styles.btnCancelText}>Cancel</Text>
@@ -241,7 +274,99 @@ function SummaryRow({ summary }: { summary: Summary }) {
   );
 }
 
+const SWIPE_THRESHOLD = 80;
+
+function SwipeableRunRow({
+  run,
+  onPress,
+  onDelete,
+  onRestore,
+}: {
+  run: Run;
+  onPress: () => void;
+  onDelete: () => void;
+  onRestore: () => void;
+}) {
+  const [translateX] = useState(() => new Animated.Value(0));
+  const isDeleted = run.deletedAt !== null;
+
+  const snapBack = useCallback(() => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+    }).start();
+  }, [translateX]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+        onPanResponderMove: (_, gesture) => {
+          // Constrain direction: active runs only slide left, deleted only right
+          if (!isDeleted) {
+            translateX.setValue(Math.min(0, gesture.dx));
+          } else {
+            translateX.setValue(Math.max(0, gesture.dx));
+          }
+        },
+        onPanResponderRelease: (_, gesture) => {
+          if (!isDeleted && gesture.dx < -SWIPE_THRESHOLD) {
+            Animated.timing(translateX, {
+              toValue: -300,
+              duration: 200,
+              useNativeDriver: true,
+            }).start(() => {
+              onDelete();
+              translateX.setValue(0);
+            });
+          } else if (isDeleted && gesture.dx > SWIPE_THRESHOLD) {
+            Animated.timing(translateX, {
+              toValue: 300,
+              duration: 200,
+              useNativeDriver: true,
+            }).start(() => {
+              onRestore();
+              translateX.setValue(0);
+            });
+          } else {
+            snapBack();
+          }
+        },
+        onPanResponderTerminate: () => {
+          snapBack();
+        },
+      }),
+    [translateX, isDeleted, onDelete, onRestore, snapBack],
+  );
+
+  return (
+    <View style={styles.swipeContainer}>
+      {/* Background revealed on swipe */}
+      {!isDeleted ? (
+        <View style={[styles.swipeBackground, styles.swipeBackgroundDelete]}>
+          <View style={styles.swipeAction}>
+            <Ionicons name="trash-outline" size={20} color="#fff" />
+            <Text style={styles.swipeActionText}>Delete</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.swipeBackground, styles.swipeBackgroundRestore]}>
+          <View style={[styles.swipeAction, { alignItems: "flex-start", paddingLeft: 20 }]}>
+            <Ionicons name="refresh-outline" size={20} color="#fff" />
+            <Text style={styles.swipeActionText}>Restore</Text>
+          </View>
+        </View>
+      )}
+      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
+        <RunRow run={run} onPress={onPress} />
+      </Animated.View>
+    </View>
+  );
+}
+
 function RunRow({ run, onPress }: { run: Run; onPress: () => void }) {
+  const isDeleted = run.deletedAt !== null;
   const date = new Date(run.startedAt);
   const dateStr = date.toLocaleDateString(undefined, {
     weekday: "short",
@@ -250,22 +375,34 @@ function RunRow({ run, onPress }: { run: Run; onPress: () => void }) {
   });
 
   return (
-    <Pressable style={styles.row} onPress={onPress}>
+    <Pressable style={[styles.row, styles.rowBg, isDeleted && styles.rowDeleted]} onPress={onPress}>
       <View style={styles.rowHeader}>
-        <Ionicons name="calendar-outline" size={14} color="#fff" />
-        <Text style={styles.label}>{dateStr}</Text>
+        <Ionicons name="calendar-outline" size={14} color={isDeleted ? "#666" : "#fff"} />
+        <Text style={[styles.label, isDeleted && styles.labelDeleted]}>{dateStr}</Text>
+        {isDeleted && (
+          <View style={styles.deletedBadge}>
+            <Ionicons name="eye-off-outline" size={11} color="#f44" />
+            <Text style={styles.deletedBadgeText}>deleted</Text>
+          </View>
+        )}
       </View>
       <View style={styles.statLine}>
-        <Ionicons name="map-outline" size={13} color="#888" />
-        <Text style={styles.stat}>{formatDistance(run.distanceMeters)}</Text>
+        <Ionicons name="map-outline" size={13} color={isDeleted ? "#555" : "#888"} />
+        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>
+          {formatDistance(run.distanceMeters)}
+        </Text>
       </View>
       <View style={styles.statLine}>
-        <Ionicons name="time-outline" size={13} color="#888" />
-        <Text style={styles.stat}>{formatDuration(run.durationSeconds)}</Text>
+        <Ionicons name="time-outline" size={13} color={isDeleted ? "#555" : "#888"} />
+        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>
+          {formatDuration(run.durationSeconds)}
+        </Text>
       </View>
       <View style={styles.statLine}>
-        <Ionicons name="speedometer-outline" size={13} color="#888" />
-        <Text style={styles.stat}>{formatPace(run.distanceMeters, run.durationSeconds)}</Text>
+        <Ionicons name="speedometer-outline" size={13} color={isDeleted ? "#555" : "#888"} />
+        <Text style={[styles.stat, isDeleted && styles.statDeleted]}>
+          {formatPace(run.distanceMeters, run.durationSeconds)}
+        </Text>
       </View>
     </Pressable>
   );
@@ -303,11 +440,65 @@ const styles = StyleSheet.create({
   toggleTextActive: {
     color: "#fff",
   },
+  swipeContainer: {
+    overflow: "hidden",
+  },
+  swipeBackground: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+  },
+  swipeBackgroundDelete: {
+    backgroundColor: "#600",
+    alignItems: "flex-end",
+    paddingRight: 20,
+  },
+  swipeBackgroundRestore: {
+    backgroundColor: "#160",
+    alignItems: "flex-start",
+    paddingLeft: 20,
+  },
+  swipeAction: {
+    alignItems: "center",
+    gap: 2,
+  },
+  swipeActionText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
+  },
   row: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#333",
+  },
+  rowBg: {
+    backgroundColor: "#000",
+  },
+  rowDeleted: {
+    backgroundColor: "#111",
+  },
+  labelDeleted: {
+    color: "#777",
+    textDecorationLine: "line-through",
+  },
+  statDeleted: {
+    color: "#555",
+  },
+  deletedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginLeft: 8,
+    backgroundColor: "#300",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  deletedBadgeText: {
+    color: "#f44",
+    fontSize: 10,
+    fontWeight: "600",
   },
   rowHeader: {
     flexDirection: "row",
@@ -387,6 +578,20 @@ const styles = StyleSheet.create({
   },
   btnDeleteText: {
     color: "#f44",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  btnRestore: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#130",
+  },
+  btnRestoreText: {
+    color: "#1a1",
     fontWeight: "600",
     fontSize: 15,
   },

@@ -24,11 +24,12 @@ export function periodLabel(startedAt: string, period: Period): string {
   }
 }
 
-/** Aggregate runs into summaries for a given period. */
+/** Aggregate runs into summaries for a given period. Soft-deleted runs are excluded. */
 export function summarize(runs: Run[], period: Period): Summary[] {
   const map = new Map<string, Summary>();
 
   for (const run of runs) {
+    if (run.deletedAt) continue;
     const label = periodLabel(run.startedAt, period);
     const existing = map.get(label);
     if (existing) {

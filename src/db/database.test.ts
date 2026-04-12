@@ -14,7 +14,7 @@ vi.mock("expo-sqlite", () => ({
   }),
 }));
 
-import { getDb, insertRun, getAllRuns, updateRun, deleteRun } from "./database";
+import { getDb, insertRun, getAllRuns, updateRun, softDeleteRun, restoreRun } from "./database";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -25,8 +25,9 @@ describe("getDb", () => {
     const db = await getDb();
 
     expect(db).toBeDefined();
-    expect(mockExecAsync).toHaveBeenCalledOnce();
+    expect(mockExecAsync).toHaveBeenCalledTimes(2);
     expect(mockExecAsync.mock.calls[0][0]).toContain("CREATE TABLE IF NOT EXISTS runs");
+    expect(mockExecAsync.mock.calls[1][0]).toContain("ALTER TABLE runs ADD COLUMN deleted_at");
   });
 
   it("returns the same instance on subsequent calls", async () => {
@@ -63,6 +64,7 @@ describe("getAllRuns", () => {
         finished_at: "2026-04-09T10:30:00Z",
         distance_meters: 5000,
         duration_seconds: 1800,
+        deleted_at: null,
       },
     ]);
 
@@ -75,6 +77,7 @@ describe("getAllRuns", () => {
         finishedAt: "2026-04-09T10:30:00Z",
         distanceMeters: 5000,
         durationSeconds: 1800,
+        deletedAt: null,
       },
     ]);
   });
@@ -105,12 +108,29 @@ describe("updateRun", () => {
   });
 });
 
-describe("deleteRun", () => {
-  it("deletes a run by id", async () => {
+describe("softDeleteRun", () => {
+  it("sets deleted_at timestamp for a run", async () => {
     mockRunAsync.mockResolvedValue({});
 
-    await deleteRun(1);
+    await softDeleteRun(1);
 
-    expect(mockRunAsync).toHaveBeenCalledWith(expect.stringContaining("DELETE FROM runs"), 1);
+    expect(mockRunAsync).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE runs SET deleted_at"),
+      expect.any(String),
+      1,
+    );
+  });
+});
+
+describe("restoreRun", () => {
+  it("clears deleted_at for a run", async () => {
+    mockRunAsync.mockResolvedValue({});
+
+    await restoreRun(1);
+
+    expect(mockRunAsync).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE runs SET deleted_at = NULL"),
+      1,
+    );
   });
 });

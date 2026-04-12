@@ -10,6 +10,7 @@ export interface Run {
   finishedAt: string | null;
   distanceMeters: number;
   durationSeconds: number;
+  deletedAt: string | null; // ISO 8601, null = active
 }
 
 export type Period = "week" | "month" | "year";
