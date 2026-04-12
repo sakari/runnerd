@@ -1,4 +1,5 @@
 appId: com.runnerd.app
+# E2E smoke test for iOS Simulator
 
 ---
 
