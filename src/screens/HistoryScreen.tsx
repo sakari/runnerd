@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   rowDeleted: {
-    opacity: 0.45,
+    backgroundColor: "#111",
   },
   labelDeleted: {
     color: "#777",
