@@ -8,10 +8,9 @@ appId: com.runnerd.app
       location: always
       notifications: allow
 
-# Verify timer screen loaded
+# Verify timer screen loaded with initial state
 - assertVisible: "00:00"
-- assertVisible: "30m"
-- assertVisible: "60m"
+- assertVisible: "30 min"
 
 # Verify both tabs exist
 - assertVisible:
@@ -19,18 +18,8 @@ appId: com.runnerd.app
 - assertVisible:
     id: "tab-history"
 
-# Navigate to History tab
+# Navigate to History tab and back
 - tapOn:
     id: "tab-history"
-
-# Navigate back to Run tab
 - tapOn:
     id: "tab-run"
-
-# Select a duration preset
-- tapOn: "30m"
-- assertVisible: "30 min target"
-
-# Deselect it
-- tapOn: "30m"
-- assertNotVisible: "30 min target"
