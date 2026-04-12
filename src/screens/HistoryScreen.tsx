@@ -112,6 +112,13 @@ export default function HistoryScreen() {
     reload();
   };
 
+  const handleRestore = async () => {
+    if (!editingRun) return;
+    await restoreRun(editingRun.id);
+    setEditingRun(null);
+    reload();
+  };
+
   const handleSwipeDelete = async (id: number) => {
     await softDeleteRun(id);
     reload();
@@ -209,12 +216,17 @@ export default function HistoryScreen() {
             />
 
             <View style={styles.modalButtons}>
-              <Pressable style={styles.btnDelete} onPress={handleDelete}>
-                <Ionicons name="trash-outline" size={16} color="#f44" />
-                <Text style={styles.btnDeleteText}>
-                  {editingRun?.deletedAt ? "Deleted" : "Delete"}
-                </Text>
-              </Pressable>
+              {editingRun?.deletedAt ? (
+                <Pressable style={styles.btnRestore} onPress={handleRestore}>
+                  <Ionicons name="refresh-outline" size={16} color="#1a1" />
+                  <Text style={styles.btnRestoreText}>Restore</Text>
+                </Pressable>
+              ) : (
+                <Pressable style={styles.btnDelete} onPress={handleDelete}>
+                  <Ionicons name="trash-outline" size={16} color="#f44" />
+                  <Text style={styles.btnDeleteText}>Delete</Text>
+                </Pressable>
+              )}
               <Pressable style={styles.btnCancel} onPress={() => setEditingRun(null)}>
                 <Ionicons name="close" size={16} color="#aaa" />
                 <Text style={styles.btnCancelText}>Cancel</Text>
@@ -566,6 +578,20 @@ const styles = StyleSheet.create({
   },
   btnDeleteText: {
     color: "#f44",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  btnRestore: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#130",
+  },
+  btnRestoreText: {
+    color: "#1a1",
     fontWeight: "600",
     fontSize: 15,
   },
