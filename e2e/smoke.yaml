@@ -8,18 +8,24 @@ appId: com.runnerd.app
       location: always
       notifications: allow
 
-# Run tab is the default — verify core UI elements are visible
-- assertVisible: "Run"
-- assertVisible: "History"
+# Verify timer screen loaded
+- assertVisible: "00:00"
 - assertVisible: "30m"
 - assertVisible: "60m"
 
+# Verify both tabs exist
+- assertVisible:
+    id: "tab-run"
+- assertVisible:
+    id: "tab-history"
+
 # Navigate to History tab
-- tapOn: "History"
-- assertVisible: "History"
+- tapOn:
+    id: "tab-history"
 
 # Navigate back to Run tab
-- tapOn: "Run"
+- tapOn:
+    id: "tab-run"
 
 # Select a duration preset
 - tapOn: "30m"
