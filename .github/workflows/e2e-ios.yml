@@ -53,6 +53,9 @@ jobs:
       - name: Prebuild iOS
         run: pnpm expo prebuild --platform ios
 
+      - name: List available simulators
+        run: xcrun simctl list devices available
+
       - name: Build for Simulator
         run: |
           xcodebuild \
@@ -60,7 +63,7 @@ jobs:
             -scheme runnerd \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
             -derivedDataPath build \
             -quiet
 
