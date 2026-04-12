@@ -39,6 +39,7 @@ export default function App() {
           component={TimerScreen}
           options={{
             tabBarLabel: "Run",
+            tabBarTestID: "tab-run",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="footsteps" size={size} color={color} />
             ),
@@ -49,6 +50,7 @@ export default function App() {
           component={HistoryScreen}
           options={{
             tabBarLabel: "History",
+            tabBarTestID: "tab-history",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="stats-chart" size={size} color={color} />
             ),
