@@ -173,7 +173,9 @@ export default function TimerScreen() {
             />
           </View>
           <Text style={[styles.targetLabel, targetDuration == null && styles.targetLabelDim]}>
-            {targetDuration != null ? `${targetDuration} min target` : "no target"}
+            {targetDuration != null
+              ? `run for ${targetDuration} minutes, play sound at halfway and end`
+              : "no target"}
           </Text>
         </View>
       )}
