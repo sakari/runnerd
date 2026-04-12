@@ -2,15 +2,10 @@ appId: com.runnerd.app
 
 ---
 
-- launchApp
-
-# Dismiss iOS permission dialogs (location + notifications)
-- tapOn:
-    text: "Allow While Using App"
-    optional: true
-- tapOn:
-    text: "Allow"
-    optional: true
+- launchApp:
+    permissions:
+      location: allow
+      notifications: allow
 
 # Run tab is the default — verify core UI elements are visible
 - assertVisible: "Run"
