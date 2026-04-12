@@ -173,10 +173,11 @@ export default function TimerScreen() {
             />
           </View>
           <Text style={[styles.targetLabel, targetDuration == null && styles.targetLabelDim]}>
-            {targetDuration != null
-              ? `run for ${targetDuration} minutes, play sound at halfway and end`
-              : "no target"}
+            {targetDuration != null ? `${targetDuration} min` : "no target"}
           </Text>
+          {targetDuration != null && (
+            <Text style={styles.targetSublabel}>sound at halfway and end</Text>
+          )}
         </View>
       )}
 
@@ -287,11 +288,17 @@ const styles = StyleSheet.create({
   },
   targetLabel: {
     color: "#1a1",
-    fontSize: 14,
+    fontSize: 18,
+    fontWeight: "600",
     marginTop: 8,
   },
   targetLabelDim: {
     color: "#555",
+  },
+  targetSublabel: {
+    color: "#555",
+    fontSize: 12,
+    marginTop: 2,
   },
   button: {
     marginTop: 48,
