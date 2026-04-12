@@ -4,7 +4,7 @@ appId: com.runnerd.app
 
 - launchApp:
     permissions:
-      location: allow
+      location: always
       notifications: allow
 
 # Run tab is the default — verify core UI elements are visible
