@@ -60,7 +60,7 @@ jobs:
             -scheme runnerd \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
             -derivedDataPath build \
             -quiet
 
@@ -71,13 +71,13 @@ jobs:
 
       - name: Boot Simulator
         run: |
-          xcrun simctl boot "iPhone 16" || true
-          xcrun simctl bootstatus "iPhone 16" -b
+          xcrun simctl boot "iPhone 15" || true
+          xcrun simctl bootstatus "iPhone 15" -b
 
       - name: Run E2E tests
         run: |
           APP_PATH=$(find build -name "*.app" -path "*/Debug-iphonesimulator/*" | head -1)
-          xcrun simctl install "iPhone 16" "$APP_PATH"
+          xcrun simctl install "iPhone 15" "$APP_PATH"
           maestro test e2e/
 
       - name: Set commit status to success
