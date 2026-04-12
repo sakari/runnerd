@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockUnloadAsync, mockPlayAsync, mockSetOnPlaybackStatusUpdate } = vi.hoisted(() => ({
-  mockUnloadAsync: vi.fn().mockResolvedValue(undefined),
+const { mockPlayAsync, mockSetPositionAsync } = vi.hoisted(() => ({
   mockPlayAsync: vi.fn(),
-  mockSetOnPlaybackStatusUpdate: vi.fn(),
+  mockSetPositionAsync: vi.fn(),
 }));
 
 vi.mock("./callout-assets", () => ({
@@ -17,8 +16,7 @@ vi.mock("expo-av", () => ({
       createAsync: vi.fn().mockResolvedValue({
         sound: {
           playAsync: mockPlayAsync,
-          unloadAsync: mockUnloadAsync,
-          setOnPlaybackStatusUpdate: mockSetOnPlaybackStatusUpdate,
+          setPositionAsync: mockSetPositionAsync,
         },
       }),
     },
@@ -28,17 +26,11 @@ vi.mock("expo-av", () => ({
 }));
 
 import { Audio } from "expo-av";
-import { playCallout } from "./speech";
+import { playCallout, _resetCacheForTesting } from "./speech";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(Audio.Sound.createAsync).mockResolvedValue({
-    sound: {
-      playAsync: mockPlayAsync,
-      unloadAsync: mockUnloadAsync,
-      setOnPlaybackStatusUpdate: mockSetOnPlaybackStatusUpdate,
-    },
-  } as never);
+  _resetCacheForTesting();
 });
 
 describe("playCallout", () => {
@@ -56,22 +48,17 @@ describe("playCallout", () => {
     await playCallout("start");
 
     expect(Audio.Sound.createAsync).toHaveBeenCalledWith(1);
+    expect(mockSetPositionAsync).toHaveBeenCalledWith(0);
     expect(mockPlayAsync).toHaveBeenCalledOnce();
   });
 
-  it("unloads sound when playback finishes", async () => {
+  it("reuses cached sound on second call", async () => {
+    await playCallout("start");
     await playCallout("start");
 
-    expect(mockSetOnPlaybackStatusUpdate).toHaveBeenCalledOnce();
-
-    const callback = mockSetOnPlaybackStatusUpdate.mock.calls[0][0];
-    // Should not unload while still playing
-    callback({ isLoaded: true, didJustFinish: false });
-    expect(mockUnloadAsync).not.toHaveBeenCalled();
-
-    // Should unload when finished
-    callback({ isLoaded: true, didJustFinish: true });
-    expect(mockUnloadAsync).toHaveBeenCalledOnce();
+    expect(Audio.Sound.createAsync).toHaveBeenCalledTimes(1);
+    expect(mockPlayAsync).toHaveBeenCalledTimes(2);
+    expect(mockSetPositionAsync).toHaveBeenCalledTimes(2);
   });
 
   it("plays the correct asset for finish event", async () => {
