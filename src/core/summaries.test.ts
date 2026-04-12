@@ -25,6 +25,7 @@ describe("summarize", () => {
       finishedAt: "2026-04-01T08:30:00Z",
       distanceMeters: 5000,
       durationSeconds: 1800,
+      deletedAt: null,
     },
     {
       id: 2,
@@ -32,6 +33,7 @@ describe("summarize", () => {
       finishedAt: "2026-04-03T08:25:00Z",
       distanceMeters: 4500,
       durationSeconds: 1500,
+      deletedAt: null,
     },
     {
       id: 3,
@@ -39,6 +41,7 @@ describe("summarize", () => {
       finishedAt: "2026-03-15T09:00:00Z",
       distanceMeters: 10000,
       durationSeconds: 3600,
+      deletedAt: null,
     },
   ];
 
@@ -61,5 +64,25 @@ describe("summarize", () => {
 
   it("returns empty for no runs", () => {
     expect(summarize([], "week")).toEqual([]);
+  });
+
+  it("excludes soft-deleted runs from summaries", () => {
+    const withDeleted: Run[] = [
+      ...runs,
+      {
+        id: 4,
+        startedAt: "2026-04-05T08:00:00Z",
+        finishedAt: "2026-04-05T08:20:00Z",
+        distanceMeters: 3000,
+        durationSeconds: 1200,
+        deletedAt: "2026-04-06T10:00:00Z",
+      },
+    ];
+    const s = summarize(withDeleted, "month");
+    const april = s.find((x) => x.label === "2026-04");
+    expect(april).toBeDefined();
+    // Only 2 active runs in April, not 3
+    expect(april!.runCount).toBe(2);
+    expect(april!.totalDistanceMeters).toBe(9500);
   });
 });
