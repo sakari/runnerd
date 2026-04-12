@@ -53,8 +53,16 @@ jobs:
       - name: Prebuild iOS
         run: pnpm expo prebuild --platform ios
 
-      - name: List available simulators
-        run: xcrun simctl list devices available
+      - name: Diagnostics
+        run: |
+          echo "=== ios/ directory ==="
+          ls -la ios/ || echo "no ios/ directory"
+          echo "=== Xcode version ==="
+          xcodebuild -version
+          echo "=== Available schemes ==="
+          xcodebuild -workspace ios/runnerd.xcworkspace -list 2>&1 || echo "workspace listing failed"
+          echo "=== Available simulators ==="
+          xcrun simctl list devices available
 
       - name: Build for Simulator
         run: |
@@ -64,8 +72,7 @@ jobs:
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 15' \
-            -derivedDataPath build \
-            -quiet
+            -derivedDataPath build
 
       - name: Install Maestro
         run: |
