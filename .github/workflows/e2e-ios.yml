@@ -93,7 +93,21 @@ jobs:
         run: |
           APP_PATH=$(find build -name "*.app" -path "*/Debug-iphonesimulator/*" | head -1)
           xcrun simctl install "iPhone 16" "$APP_PATH"
-          maestro test e2e/
+          maestro test --format junit --output maestro-report.xml e2e/
+
+      - name: Screenshot on failure
+        if: failure()
+        run: xcrun simctl io "iPhone 16" screenshot screenshot.png
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: |
+            screenshot.png
+            maestro-report.xml
+            ~/.maestro/tests/**/*
 
       - name: Set commit status to success
         if: success()
