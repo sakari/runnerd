@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { View, Text, Pressable, TextInput, StyleSheet } from "react-native";
+import { View, Text, Pressable, Dimensions, FlatList, StyleSheet } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
 import { GeoPoint, TargetDurationMinutes } from "../core/types";
@@ -10,11 +10,16 @@ import { startTracking, stopTracking } from "../platform/gps";
 import { playCallout, preloadCallouts, unloadCallouts } from "../platform/speech";
 import { scheduleTimeNotifications, cancelTimeNotifications } from "../platform/time-notifications";
 
+const DURATIONS: (number | null)[] = [null, 15, 30, 45, 60, 75, 90, 105, 120];
+const ITEM_WIDTH = 72;
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const SIDE_PADDING = (SCREEN_WIDTH - ITEM_WIDTH) / 2;
+
 export default function TimerScreen() {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
-  const [targetDuration, setTargetDuration] = useState<TargetDurationMinutes | null>(null);
+  const [targetDuration, setTargetDuration] = useState<TargetDurationMinutes | null>(30);
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const distanceRef = useRef(0);
@@ -110,73 +115,69 @@ export default function TimerScreen() {
     targetDurationRef.current = targetDuration;
   }, [targetDuration]);
 
-  const [customInput, setCustomInput] = useState("");
-  const presets = [30, 60];
+  const wheelRef = useRef<FlatList>(null);
+  const [centeredIndex, setCenteredIndex] = useState(2);
 
-  const selectPreset = (d: number) => {
-    if (targetDuration === d) {
-      setTargetDuration(null);
-      setCustomInput("");
-    } else {
-      setTargetDuration(d);
-      setCustomInput("");
-    }
-  };
+  const handleScrollEnd = useCallback(
+    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      const index = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
+      const clamped = Math.max(0, Math.min(index, DURATIONS.length - 1));
+      setCenteredIndex(clamped);
+      setTargetDuration(DURATIONS[clamped]);
+    },
+    [],
+  );
 
-  const applyCustom = () => {
-    const mins = parseFloat(customInput);
-    if (!isNaN(mins) && mins > 0) {
-      setTargetDuration(mins);
-    }
-  };
+  const handleWheelItemPress = useCallback((index: number) => {
+    wheelRef.current?.scrollToIndex({ index, animated: true });
+    setCenteredIndex(index);
+    setTargetDuration(DURATIONS[index]);
+  }, []);
 
   return (
     <View style={styles.container}>
       {!running && (
         <View style={styles.durationSection}>
-          <View style={styles.durationRow}>
-            {presets.map((d) => (
-              <Pressable
-                key={d}
-                style={[styles.durationChip, targetDuration === d && styles.durationChipActive]}
-                onPress={() => selectPreset(d)}
-              >
-                <Text
-                  style={[
-                    styles.durationChipText,
-                    targetDuration === d && styles.durationChipTextActive,
-                  ]}
-                >
-                  {d}m
-                </Text>
-              </Pressable>
-            ))}
-            <View style={styles.customInputRow}>
-              <TextInput
-                style={styles.customInput}
-                value={customInput}
-                onChangeText={(text) => {
-                  setCustomInput(text);
-                  setTargetDuration(null);
-                }}
-                onSubmitEditing={applyCustom}
-                placeholder="min"
-                placeholderTextColor="#555"
-                keyboardType="numeric"
-                returnKeyType="done"
-              />
-              <Pressable
-                style={[styles.durationChip, styles.customApply]}
-                onPress={applyCustom}
-                disabled={!customInput}
-              >
-                <Ionicons name="checkmark" size={18} color={customInput ? "#fff" : "#555"} />
-              </Pressable>
-            </View>
+          <View style={styles.wheelContainer}>
+            <View style={styles.wheelIndicator} />
+            <FlatList
+              ref={wheelRef}
+              data={DURATIONS}
+              keyExtractor={(_, i) => String(i)}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={ITEM_WIDTH}
+              decelerationRate="fast"
+              contentContainerStyle={{ paddingHorizontal: SIDE_PADDING }}
+              getItemLayout={(_, index) => ({
+                length: ITEM_WIDTH,
+                offset: ITEM_WIDTH * index,
+                index,
+              })}
+              initialScrollIndex={centeredIndex}
+              onMomentumScrollEnd={handleScrollEnd}
+              extraData={centeredIndex}
+              renderItem={({ item, index }) => {
+                const dist = Math.abs(index - centeredIndex);
+                return (
+                  <Pressable style={styles.wheelItem} onPress={() => handleWheelItemPress(index)}>
+                    <Text
+                      style={[
+                        styles.wheelText,
+                        dist === 1 && styles.wheelTextNear,
+                        dist === 0 && styles.wheelTextCenter,
+                      ]}
+                    >
+                      {item == null ? "—" : `${item}`}
+                    </Text>
+                  </Pressable>
+                );
+              }}
+            />
           </View>
-          {targetDuration != null && (
-            <Text style={styles.targetLabel}>{targetDuration} min target</Text>
-          )}
+          <Text style={[styles.targetLabel, targetDuration == null && styles.targetLabelDim]}>
+            {targetDuration != null ? `${targetDuration} min target` : "no target"}
+          </Text>
         </View>
       )}
 
@@ -251,54 +252,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
   },
-  durationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+  wheelContainer: {
+    height: 64,
+    width: SCREEN_WIDTH,
   },
-  customInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+  wheelIndicator: {
+    position: "absolute",
+    left: SIDE_PADDING,
+    width: ITEM_WIDTH,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: "rgba(17, 170, 17, 0.15)",
+    zIndex: 0,
   },
-  customInput: {
-    width: 60,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#555",
-    color: "#fff",
+  wheelItem: {
+    width: ITEM_WIDTH,
+    height: 64,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wheelText: {
+    color: "#444",
     fontSize: 16,
-    textAlign: "center",
     fontWeight: "600",
+    fontVariant: ["tabular-nums"],
   },
-  customApply: {
-    borderColor: "#555",
-    paddingHorizontal: 10,
+  wheelTextNear: {
+    color: "#888",
+    fontSize: 22,
+  },
+  wheelTextCenter: {
+    color: "#fff",
+    fontSize: 32,
+    fontWeight: "700",
   },
   targetLabel: {
     color: "#1a1",
     fontSize: 14,
     marginTop: 8,
   },
-  durationChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#555",
-  },
-  durationChipActive: {
-    backgroundColor: "#1a1",
-    borderColor: "#1a1",
-  },
-  durationChipText: {
-    fontSize: 18,
-    color: "#aaa",
-    fontWeight: "600",
-  },
-  durationChipTextActive: {
-    color: "#fff",
+  targetLabelDim: {
+    color: "#555",
   },
   button: {
     marginTop: 48,
