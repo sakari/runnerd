@@ -278,13 +278,25 @@ function SwipeableRunRow({
   const [translateX] = useState(() => new Animated.Value(0));
   const isDeleted = run.deletedAt !== null;
 
+  const snapBack = useCallback(() => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+    }).start();
+  }, [translateX]);
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, gesture) =>
           Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
         onPanResponderMove: (_, gesture) => {
-          translateX.setValue(gesture.dx);
+          // Constrain direction: active runs only slide left, deleted only right
+          if (!isDeleted) {
+            translateX.setValue(Math.min(0, gesture.dx));
+          } else {
+            translateX.setValue(Math.max(0, gesture.dx));
+          }
         },
         onPanResponderRelease: (_, gesture) => {
           if (!isDeleted && gesture.dx < -SWIPE_THRESHOLD) {
@@ -306,14 +318,14 @@ function SwipeableRunRow({
               translateX.setValue(0);
             });
           } else {
-            Animated.spring(translateX, {
-              toValue: 0,
-              useNativeDriver: true,
-            }).start();
+            snapBack();
           }
         },
+        onPanResponderTerminate: () => {
+          snapBack();
+        },
       }),
-    [translateX, isDeleted, onDelete, onRestore],
+    [translateX, isDeleted, onDelete, onRestore, snapBack],
   );
 
   return (
