@@ -1,0 +1,26 @@
+appId: com.runnerd.app
+
+---
+
+- launchApp
+
+# Run tab is the default — verify core UI elements are visible
+- assertVisible: "Run"
+- assertVisible: "History"
+- assertVisible: "30m"
+- assertVisible: "60m"
+
+# Navigate to History tab
+- tapOn: "History"
+- assertVisible: "History"
+
+# Navigate back to Run tab
+- tapOn: "Run"
+
+# Select a duration preset
+- tapOn: "30m"
+- assertVisible: "30 min target"
+
+# Deselect it
+- tapOn: "30m"
+- assertNotVisible: "30 min target"
