@@ -22,6 +22,6 @@ export interface Summary {
   runCount: number;
 }
 
-export type VoiceEvent = "start" | "halfway" | "finish";
+export type VoiceEvent = "start" | "finish";
 
 export type TargetDurationMinutes = number;

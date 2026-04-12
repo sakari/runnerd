@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockUnloadAsync, mockPlayAsync, mockSetPositionAsync } = vi.hoisted(() => ({
-  mockUnloadAsync: vi.fn(),
+const { mockPlayAsync, mockSetPositionAsync } = vi.hoisted(() => ({
   mockPlayAsync: vi.fn(),
   mockSetPositionAsync: vi.fn(),
 }));
 
 vi.mock("./callout-assets", () => ({
-  default: { start: 1, halfway: 2, finish: 3 },
+  default: { start: 1, finish: 3 },
 }));
 
 vi.mock("expo-av", () => ({
@@ -18,84 +17,54 @@ vi.mock("expo-av", () => ({
         sound: {
           playAsync: mockPlayAsync,
           setPositionAsync: mockSetPositionAsync,
-          unloadAsync: mockUnloadAsync,
         },
       }),
     },
   },
-  InterruptionModeIOS: { DuckOthers: 2 },
-  InterruptionModeAndroid: { DuckOthers: 2 },
+  InterruptionModeIOS: { MixWithOthers: 1 },
+  InterruptionModeAndroid: { DoNotMix: 0 },
 }));
 
 import { Audio } from "expo-av";
-import { playCallout, preloadCallouts, unloadCallouts } from "./speech";
+import { playCallout, _resetCacheForTesting } from "./speech";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  unloadCallouts();
-  vi.mocked(Audio.Sound.createAsync).mockResolvedValue({
-    sound: {
-      playAsync: mockPlayAsync,
-      setPositionAsync: mockSetPositionAsync,
-      unloadAsync: mockUnloadAsync,
-    },
-  } as never);
+  _resetCacheForTesting();
 });
 
-describe("preloadCallouts", () => {
+describe("playCallout", () => {
   it("configures audio session", async () => {
-    await preloadCallouts();
+    await playCallout("start");
 
     expect(Audio.setAudioModeAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        staysActiveInBackground: true,
         playsInSilentModeIOS: true,
       }),
     );
   });
 
-  it("creates sounds for all events", async () => {
-    await preloadCallouts();
-
-    expect(Audio.Sound.createAsync).toHaveBeenCalledWith(1);
-    expect(Audio.Sound.createAsync).toHaveBeenCalledWith(2);
-    expect(Audio.Sound.createAsync).toHaveBeenCalledWith(3);
-  });
-});
-
-describe("playCallout", () => {
-  it("replays preloaded sound from position 0", async () => {
-    await preloadCallouts();
-    vi.clearAllMocks();
-
+  it("creates and plays the correct asset", async () => {
     await playCallout("start");
 
+    expect(Audio.Sound.createAsync).toHaveBeenCalledWith(1);
     expect(mockSetPositionAsync).toHaveBeenCalledWith(0);
     expect(mockPlayAsync).toHaveBeenCalledOnce();
-    expect(Audio.Sound.createAsync).not.toHaveBeenCalled();
   });
 
-  it("falls back to creating sound if not preloaded", async () => {
+  it("reuses cached sound on second call", async () => {
+    await playCallout("start");
     await playCallout("start");
 
-    expect(Audio.Sound.createAsync).toHaveBeenCalledWith(1);
-    expect(mockPlayAsync).toHaveBeenCalledOnce();
+    expect(Audio.Sound.createAsync).toHaveBeenCalledTimes(1);
+    expect(mockPlayAsync).toHaveBeenCalledTimes(2);
+    expect(mockSetPositionAsync).toHaveBeenCalledTimes(2);
   });
 
-  it("plays the correct asset for each event", async () => {
-    await preloadCallouts();
-
+  it("plays the correct asset for finish event", async () => {
     await playCallout("finish");
-    expect(mockPlayAsync).toHaveBeenCalled();
-  });
-});
 
-describe("unloadCallouts", () => {
-  it("unloads all preloaded sounds", async () => {
-    await preloadCallouts();
-
-    await unloadCallouts();
-
-    expect(mockUnloadAsync).toHaveBeenCalled();
+    expect(Audio.Sound.createAsync).toHaveBeenCalledWith(3);
+    expect(mockPlayAsync).toHaveBeenCalledOnce();
   });
 });
