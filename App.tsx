@@ -4,7 +4,10 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { requestPermissions } from "./src/platform/gps";
-import { requestNotificationPermissions, setupNotificationHandler } from "./src/platform/time-notifications";
+import {
+  requestNotificationPermissions,
+  setupNotificationHandler,
+} from "./src/platform/time-notifications";
 import TimerScreen from "./src/screens/TimerScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 
