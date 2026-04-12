@@ -1,0 +1,123 @@
+name: E2E iOS
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  e2e:
+    if: >
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/run-e2e')
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Set commit status to pending
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number,
+            });
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: pr.data.head.sha,
+              state: 'pending',
+              context: 'E2E iOS',
+              description: 'Running Maestro E2E tests...',
+            });
+
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/merge
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prebuild iOS
+        run: pnpm expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install
+
+      - name: Build for Simulator
+        run: |
+          xcodebuild \
+            -workspace ios/runnerd.xcworkspace \
+            -scheme runnerd \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -derivedDataPath build \
+            -quiet
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Boot Simulator
+        run: |
+          xcrun simctl boot "iPhone 16" || true
+          xcrun simctl bootstatus "iPhone 16" -b
+
+      - name: Run E2E tests
+        run: |
+          APP_PATH=$(find build -name "*.app" -path "*/Debug-iphonesimulator/*" | head -1)
+          xcrun simctl install "iPhone 16" "$APP_PATH"
+          maestro test e2e/
+
+      - name: Set commit status to success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number,
+            });
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: pr.data.head.sha,
+              state: 'success',
+              context: 'E2E iOS',
+              description: 'E2E tests passed',
+            });
+
+      - name: Set commit status to failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number,
+            });
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: pr.data.head.sha,
+              state: 'failure',
+              context: 'E2E iOS',
+              description: 'E2E tests failed',
+            });
