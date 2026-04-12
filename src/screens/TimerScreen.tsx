@@ -118,15 +118,12 @@ export default function TimerScreen() {
   const wheelRef = useRef<FlatList>(null);
   const [centeredIndex, setCenteredIndex] = useState(2);
 
-  const handleScrollEnd = useCallback(
-    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
-      const clamped = Math.max(0, Math.min(index, DURATIONS.length - 1));
-      setCenteredIndex(clamped);
-      setTargetDuration(DURATIONS[clamped]);
-    },
-    [],
-  );
+  const handleScrollEnd = useCallback((e: { nativeEvent: { contentOffset: { x: number } } }) => {
+    const index = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
+    const clamped = Math.max(0, Math.min(index, DURATIONS.length - 1));
+    setCenteredIndex(clamped);
+    setTargetDuration(DURATIONS[clamped]);
+  }, []);
 
   const handleWheelItemPress = useCallback((index: number) => {
     wheelRef.current?.scrollToIndex({ index, animated: true });
