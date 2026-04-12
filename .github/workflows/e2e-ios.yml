@@ -15,7 +15,7 @@ jobs:
     if: >
       github.event.issue.pull_request &&
       contains(github.event.comment.body, '/run-e2e')
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 5
 
     steps:
@@ -55,7 +55,7 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ios
-        run: pod install
+        run: pod install --repo-update
 
       - name: Build for Simulator
         run: |
@@ -64,9 +64,8 @@ jobs:
             -scheme runnerd \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-            -derivedDataPath build \
-            -quiet
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -derivedDataPath build
 
       - name: Install Maestro
         run: |
