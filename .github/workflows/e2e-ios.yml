@@ -51,11 +51,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Prebuild iOS
-        run: pnpm expo prebuild --platform ios --no-install
-
-      - name: Install CocoaPods
-        working-directory: ios
-        run: pod install
+        run: pnpm expo prebuild --platform ios
 
       - name: Build for Simulator
         run: |
