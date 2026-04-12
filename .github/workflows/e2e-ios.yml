@@ -16,7 +16,7 @@ jobs:
       github.event.issue.pull_request &&
       contains(github.event.comment.body, '/run-e2e')
     runs-on: macos-15
-    timeout-minutes: 5
+    timeout-minutes: 15
 
     steps:
       - name: Set commit status to pending
