@@ -1,14 +1,18 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { View, Text, Pressable, Dimensions, FlatList, StyleSheet } from "react-native";
+import { View, Text, Pressable, Dimensions, FlatList, StyleSheet, Alert } from "react-native";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
 import { GeoPoint, TargetDurationMinutes } from "../core/types";
 import { haversine, formatDuration, formatDistance, formatPace } from "../core/geo";
 
 import { insertRun } from "../db/database";
-import { startTracking, stopTracking } from "../platform/gps";
+import { requestPermissions, startTracking, stopTracking } from "../platform/gps";
 import { playCallout } from "../platform/speech";
-import { scheduleTimeNotifications, cancelTimeNotifications } from "../platform/time-notifications";
+import {
+  requestNotificationPermissions,
+  scheduleTimeNotifications,
+  cancelTimeNotifications,
+} from "../platform/time-notifications";
 
 const DURATIONS: (number | null)[] = [null, 15, 30, 45, 60, 75, 90, 105, 120];
 const ITEM_WIDTH = 72;
@@ -56,6 +60,18 @@ export default function TimerScreen() {
   }, []);
 
   const handleStart = useCallback(async () => {
+    // Request permissions in-context on first Start, per App Store guideline 5.1.1(ii).
+    // These are no-ops after the first grant.
+    const locationGranted = await requestPermissions();
+    if (!locationGranted) {
+      Alert.alert(
+        "Location required",
+        "Runnerd needs location access to measure distance and pace. Enable it in Settings to start a run.",
+      );
+      return;
+    }
+    await requestNotificationPermissions();
+
     reset();
     setRunning(true);
     startTimeRef.current = Date.now();

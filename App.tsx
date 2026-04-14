@@ -3,11 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { requestPermissions } from "./src/platform/gps";
-import {
-  requestNotificationPermissions,
-  setupNotificationHandler,
-} from "./src/platform/time-notifications";
+import { setupNotificationHandler } from "./src/platform/time-notifications";
 import TimerScreen from "./src/screens/TimerScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 
@@ -15,9 +11,9 @@ const Tab = createBottomTabNavigator();
 
 export default function App() {
   useEffect(() => {
+    // Only set up the handler at launch. Permission prompts are requested
+    // in-context when the user first taps Start, per App Store guideline 5.1.1(ii).
     setupNotificationHandler();
-    requestPermissions();
-    requestNotificationPermissions();
   }, []);
 
   return (
