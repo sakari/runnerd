@@ -103,10 +103,7 @@ export default function TimerScreen() {
 
     const targetSec = targetDurationRef.current != null ? targetDurationRef.current * 60 : null;
     if (targetSec != null && targetSec > 0) {
-      halfwayTimeoutRef.current = setTimeout(
-        () => speakCallout("halfway"),
-        (targetSec / 2) * 1000,
-      );
+      halfwayTimeoutRef.current = setTimeout(() => speakCallout("halfway"), (targetSec / 2) * 1000);
       finishTimeoutRef.current = setTimeout(() => speakCallout("finish"), targetSec * 1000);
       // Fallback visual-only notifications in case the audio session is
       // interrupted (phone call, other app grabs audio focus, etc.)
