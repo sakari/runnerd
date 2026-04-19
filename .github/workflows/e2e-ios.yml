@@ -31,6 +31,7 @@ jobs:
         with:
           path: ios/Pods
           key: pods-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pods-
 
       - name: Install CocoaPods
         working-directory: ios
@@ -41,21 +42,16 @@ jobs:
         with:
           path: build
           key: deriveddata-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: deriveddata-
 
       - name: Prepare Simulator
         run: |
-          echo "=== Xcode Version ==="
-          xcodebuild -version
-          echo "=== Available Runtimes ==="
           xcrun simctl list runtimes
-          echo "=== Available Devices ==="
           xcrun simctl list devices available
 
           if ! xcrun simctl list runtimes | grep -q "com.apple.CoreSimulator.SimRuntime.iOS"; then
             echo "No iOS runtime found, downloading..."
             xcodebuild -downloadPlatform iOS
-            echo "=== Runtimes after download ==="
-            xcrun simctl list runtimes
           fi
 
           RUNTIME_ID=$(xcrun simctl list runtimes | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+' | tail -1)
@@ -85,8 +81,8 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          APP_PATH=$(find build -name "*.app" -path "*/Release-iphonesimulator/*" | head -1)
-          echo "APP_PATH: $APP_PATH"
+          APP_PATH="build/Build/Products/Release-iphonesimulator/runnerd.app"
+          ls -la "$APP_PATH"
           xcrun simctl install "iPhone 16" "$APP_PATH"
           maestro test --format junit --output maestro-report.xml e2e/
 
