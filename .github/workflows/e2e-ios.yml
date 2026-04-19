@@ -44,15 +44,27 @@ jobs:
 
       - name: Prepare Simulator
         run: |
+          echo "=== Xcode Version ==="
+          xcodebuild -version
+          echo "=== Available Runtimes ==="
+          xcrun simctl list runtimes
+          echo "=== Available Devices ==="
+          xcrun simctl list devices available
+
           if ! xcrun simctl list runtimes | grep -q "com.apple.CoreSimulator.SimRuntime.iOS"; then
+            echo "No iOS runtime found, downloading..."
             xcodebuild -downloadPlatform iOS
+            echo "=== Runtimes after download ==="
+            xcrun simctl list runtimes
           fi
-          RUNTIME=$(xcrun simctl list runtimes | grep "com.apple.CoreSimulator.SimRuntime.iOS" | tail -1 | sed 's/.*- //' | sed 's/ (.*//')
-          RUNTIME_ID=$(xcrun simctl list runtimes | grep "com.apple.CoreSimulator.SimRuntime.iOS" | tail -1 | awk -F '[()]' '{print $(NF-1)}')
-          echo "Runtime: $RUNTIME ($RUNTIME_ID)"
-          if ! xcrun simctl list devices "$RUNTIME" | grep -q "iPhone 16"; then
+
+          RUNTIME_ID=$(xcrun simctl list runtimes | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+' | tail -1)
+          echo "Using runtime: $RUNTIME_ID"
+
+          if ! xcrun simctl list devices available | grep -q "iPhone 16"; then
             xcrun simctl create "iPhone 16" com.apple.CoreSimulator.SimDeviceType.iPhone-16 "$RUNTIME_ID"
           fi
+
           xcrun simctl boot "iPhone 16" || true
           xcrun simctl bootstatus "iPhone 16" -b
 
