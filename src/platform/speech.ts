@@ -1,24 +1,14 @@
-import { Audio } from "expo-av";
+import * as Speech from "expo-speech";
 import { VoiceEvent } from "../core/types";
 import { ensureAudioSession } from "./audio-session";
-import calloutAssets from "./callout-assets";
 
-const cache: Partial<Record<VoiceEvent, Audio.Sound>> = {};
+const PHRASES: Record<VoiceEvent, string> = {
+  start: "Let's go",
+  halfway: "You're halfway there",
+  finish: "Time's up",
+};
 
-export async function playCallout(event: VoiceEvent): Promise<void> {
+export async function speakCallout(event: VoiceEvent): Promise<void> {
   await ensureAudioSession();
-  let sound = cache[event];
-  if (!sound) {
-    const result = await Audio.Sound.createAsync(calloutAssets[event]);
-    sound = result.sound;
-    cache[event] = sound;
-  }
-  await sound.setPositionAsync(0);
-  await sound.playAsync();
-}
-
-export function _resetCacheForTesting(): void {
-  for (const key of Object.keys(cache) as VoiceEvent[]) {
-    delete cache[key];
-  }
+  Speech.speak(PHRASES[event], { rate: 1.0, pitch: 1.0 });
 }

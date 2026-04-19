@@ -39,22 +39,18 @@ describe("requestNotificationPermissions", () => {
 });
 
 describe("scheduleTimeNotifications", () => {
-  it("schedules halfway and finish notifications", async () => {
+  it("schedules halfway and finish notifications without sound (visual fallback)", async () => {
     await scheduleTimeNotifications(1800);
 
     expect(mockSchedule).toHaveBeenCalledTimes(2);
-    expect(mockSchedule).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: expect.objectContaining({ sound: "halfway.wav" }),
-        trigger: expect.objectContaining({ seconds: 900 }),
-      }),
-    );
-    expect(mockSchedule).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: expect.objectContaining({ sound: "times_up.wav" }),
-        trigger: expect.objectContaining({ seconds: 1800 }),
-      }),
-    );
+    const calls = mockSchedule.mock.calls.map((c) => c[0]);
+    const halfway = calls.find((c) => c.identifier === "run-halfway");
+    const finish = calls.find((c) => c.identifier === "run-finish");
+
+    expect(halfway.trigger.seconds).toBe(900);
+    expect(halfway.content.sound).toBeUndefined();
+    expect(finish.trigger.seconds).toBe(1800);
+    expect(finish.content.sound).toBeUndefined();
   });
 });
 
