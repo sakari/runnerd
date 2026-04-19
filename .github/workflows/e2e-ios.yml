@@ -9,7 +9,7 @@ on:
 jobs:
   e2e:
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +42,20 @@ jobs:
           path: build
           key: deriveddata-${{ hashFiles('pnpm-lock.yaml') }}
 
+      - name: Prepare Simulator
+        run: |
+          if ! xcrun simctl list runtimes | grep -q "com.apple.CoreSimulator.SimRuntime.iOS"; then
+            xcodebuild -downloadPlatform iOS
+          fi
+          RUNTIME=$(xcrun simctl list runtimes | grep "com.apple.CoreSimulator.SimRuntime.iOS" | tail -1 | sed 's/.*- //' | sed 's/ (.*//')
+          RUNTIME_ID=$(xcrun simctl list runtimes | grep "com.apple.CoreSimulator.SimRuntime.iOS" | tail -1 | awk -F '[()]' '{print $(NF-1)}')
+          echo "Runtime: $RUNTIME ($RUNTIME_ID)"
+          if ! xcrun simctl list devices "$RUNTIME" | grep -q "iPhone 16"; then
+            xcrun simctl create "iPhone 16" com.apple.CoreSimulator.SimDeviceType.iPhone-16 "$RUNTIME_ID"
+          fi
+          xcrun simctl boot "iPhone 16" || true
+          xcrun simctl bootstatus "iPhone 16" -b
+
       - name: Build for Simulator
         run: |
           xcodebuild \
@@ -57,14 +71,10 @@ jobs:
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
-      - name: Boot Simulator
-        run: |
-          xcrun simctl boot "iPhone 16" || true
-          xcrun simctl bootstatus "iPhone 16" -b
-
       - name: Run E2E tests
         run: |
           APP_PATH=$(find build -name "*.app" -path "*/Release-iphonesimulator/*" | head -1)
+          echo "APP_PATH: $APP_PATH"
           xcrun simctl install "iPhone 16" "$APP_PATH"
           maestro test --format junit --output maestro-report.xml e2e/
 
