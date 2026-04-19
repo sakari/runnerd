@@ -14,12 +14,12 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.runnerd.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Runnerd uses your location to track distance during runs.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Runnerd uses your location in the background to keep tracking your run.",
+        "NSLocationWhenInUseUsageDescription": "Runnerd uses your location to measure the distance and pace of your run.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Runnerd continues tracking your distance and pace when the screen is locked or you switch to another app during a run.",
         "UIBackgroundModes": [
-          "location",
-          "audio"
-        ]
+          "location"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
