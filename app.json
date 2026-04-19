@@ -17,7 +17,8 @@
         "NSLocationWhenInUseUsageDescription": "Runnerd uses your location to measure the distance and pace of your run.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Runnerd continues tracking your distance and pace when the screen is locked or you switch to another app during a run.",
         "UIBackgroundModes": [
-          "location"
+          "location",
+          "audio"
         ],
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -37,15 +38,7 @@
     "plugins": [
       "expo-sqlite",
       "./plugins/with-local-notifications-only",
-      [
-        "expo-notifications",
-        {
-          "sounds": [
-            "./assets/callouts/halfway.wav",
-            "./assets/callouts/times_up.wav"
-          ]
-        }
-      ]
+      "expo-notifications"
     ]
   }
 }

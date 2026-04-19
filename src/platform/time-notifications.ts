@@ -8,12 +8,14 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function scheduleTimeNotifications(targetDurationSeconds: number): Promise<void> {
   const halfway = Math.floor(targetDurationSeconds / 2);
 
+  // Audio callouts are driven by Speech.speak from a JS timer while a silent
+  // audio-keepalive track keeps the iOS session active. These notifications are
+  // a visual-only fallback in case the audio session is interrupted.
   await Notifications.scheduleNotificationAsync({
     identifier: "run-halfway",
     content: {
       title: "Halfway",
       body: "You're halfway through your run",
-      sound: "halfway.wav",
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -27,7 +29,6 @@ export async function scheduleTimeNotifications(targetDurationSeconds: number): 
     content: {
       title: "Time's up",
       body: "You've reached your target time",
-      sound: "times_up.wav",
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

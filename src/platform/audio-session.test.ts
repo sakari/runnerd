@@ -16,16 +16,16 @@ beforeEach(() => {
 });
 
 describe("ensureAudioSession", () => {
-  it("configures audio mode to mix without ducking", async () => {
+  it("configures audio mode to stay active in background", async () => {
     await ensureAudioSession();
 
     expect(Audio.setAudioModeAsync).toHaveBeenCalledOnce();
     expect(Audio.setAudioModeAsync).toHaveBeenCalledWith({
       playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
+      staysActiveInBackground: true,
       interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
       interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      shouldDuckAndroid: false,
+      shouldDuckAndroid: true,
     });
   });
 });

@@ -7,7 +7,8 @@ import { haversine, formatDuration, formatDistance, formatPace } from "../core/g
 
 import { insertRun } from "../db/database";
 import { requestPermissions, startTracking, stopTracking } from "../platform/gps";
-import { playCallout } from "../platform/speech";
+import { speakCallout } from "../platform/speech";
+import { startAudioKeepalive, stopAudioKeepalive } from "../platform/audio-keepalive";
 import {
   requestNotificationPermissions,
   scheduleTimeNotifications,
@@ -26,6 +27,8 @@ export default function TimerScreen() {
   const [targetDuration, setTargetDuration] = useState<TargetDurationMinutes | null>(30);
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const halfwayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finishTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const distanceRef = useRef(0);
   const lastPointRef = useRef<GeoPoint | null>(null);
   const targetDurationRef = useRef<TargetDurationMinutes | null>(null);
@@ -35,8 +38,17 @@ export default function TimerScreen() {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    if (halfwayTimeoutRef.current) {
+      clearTimeout(halfwayTimeoutRef.current);
+      halfwayTimeoutRef.current = null;
+    }
+    if (finishTimeoutRef.current) {
+      clearTimeout(finishTimeoutRef.current);
+      finishTimeoutRef.current = null;
+    }
     await stopTracking();
     await cancelTimeNotifications();
+    await stopAudioKeepalive();
     deactivateKeepAwake();
   }, []);
 
@@ -77,18 +89,27 @@ export default function TimerScreen() {
     startTimeRef.current = Date.now();
     await activateKeepAwakeAsync();
 
+    // Start the silent audio-keepalive first so the iOS audio session is hot
+    // before we speak — otherwise the first utterance can clip.
+    await startAudioKeepalive();
+
     timerRef.current = setInterval(() => {
       if (startTimeRef.current) {
         setElapsed((Date.now() - startTimeRef.current) / 1000);
       }
     }, 1000);
 
-    playCallout("start");
+    speakCallout("start");
 
-    // Schedule time-based notifications (halfway, finish) via OS notifications
-    // so they fire reliably even when backgrounded/locked
     const targetSec = targetDurationRef.current != null ? targetDurationRef.current * 60 : null;
     if (targetSec != null && targetSec > 0) {
+      halfwayTimeoutRef.current = setTimeout(
+        () => speakCallout("halfway"),
+        (targetSec / 2) * 1000,
+      );
+      finishTimeoutRef.current = setTimeout(() => speakCallout("finish"), targetSec * 1000);
+      // Fallback visual-only notifications in case the audio session is
+      // interrupted (phone call, other app grabs audio focus, etc.)
       scheduleTimeNotifications(targetSec);
     }
 
@@ -112,7 +133,7 @@ export default function TimerScreen() {
     const finalElapsed = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
     const finalDistance = distanceRef.current;
 
-    playCallout("finish");
+    speakCallout("finish");
 
     const startedAt = startTimeRef.current
       ? new Date(startTimeRef.current).toISOString()
