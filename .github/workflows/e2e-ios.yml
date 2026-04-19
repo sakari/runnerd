@@ -14,7 +14,10 @@ jobs:
   e2e:
     if: >
       github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/run-e2e')
+      contains(github.event.comment.body, '/run-e2e') &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
     runs-on: macos-15
     timeout-minutes: 15
 

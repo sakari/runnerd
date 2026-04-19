@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Runnerd Privacy Policy</title>
+    <meta
+      name="description"
+      content="Privacy policy for the Runnerd running tracker app."
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --fg: #1a1a1a;
+        --muted: #555;
+        --accent: #117711;
+        --rule: #e5e5e5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0e0e0e;
+          --fg: #eaeaea;
+          --muted: #9a9a9a;
+          --accent: #3ec13e;
+          --rule: #262626;
+        }
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+      }
+      h1 {
+        font-size: 2rem;
+        margin: 0 0 0.25em;
+      }
+      h2 {
+        font-size: 1.2rem;
+        margin-top: 2em;
+        padding-top: 0.6em;
+        border-top: 1px solid var(--rule);
+      }
+      p,
+      ul {
+        margin: 0.75em 0;
+      }
+      ul {
+        padding-left: 1.3em;
+      }
+      li {
+        margin: 0.25em 0;
+      }
+      a {
+        color: var(--accent);
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      code {
+        background: var(--rule);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 0.92em;
+      }
+      footer {
+        margin-top: 3em;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Runnerd Privacy Policy</h1>
+      <p class="meta">Last updated: 14 April 2026</p>
+
+      <p>
+        Runnerd is a running tracker app that measures the distance, duration,
+        and pace of your runs using your device's GPS, and stores that history
+        locally on your device. This policy explains what data Runnerd
+        processes, how it is used, and the choices you have.
+      </p>
+
+      <h2>1. Who we are</h2>
+      <p>
+        Runnerd is developed by the Runnerd project ("we", "us"). If you have
+        any questions about this policy, contact us at
+        <a href="mailto:privacy@runnerd.app">privacy@runnerd.app</a>.
+      </p>
+
+      <h2>2. What data Runnerd processes</h2>
+      <p>Runnerd accesses the following data on your device:</p>
+      <ul>
+        <li>
+          <strong>Precise location</strong> (GPS coordinates, speed, and
+          timestamps), used only while a run is active, in order to measure
+          distance and pace.
+        </li>
+        <li>
+          <strong>Run history you create in the app</strong> — start time,
+          duration, and total distance for each run you record.
+        </li>
+      </ul>
+      <p>Runnerd does <em>not</em> collect:</p>
+      <ul>
+        <li>Your name, email address, phone number, or contacts.</li>
+        <li>Photos, microphone input, health data, or biometric data.</li>
+        <li>
+          Advertising identifiers, device identifiers used for tracking, or
+          cross-app/site tracking data.
+        </li>
+        <li>Analytics, telemetry, or crash-reporting data.</li>
+      </ul>
+
+      <h2>3. How your data is used</h2>
+      <ul>
+        <li>
+          To calculate the distance, pace, and duration of the run you are
+          currently recording.
+        </li>
+        <li>
+          To display your run history and period summaries (week / month /
+          year) inside the app.
+        </li>
+        <li>
+          To play audio callouts and scheduled local notifications at the
+          halfway point and end of a timed run.
+        </li>
+      </ul>
+      <p>
+        Runnerd does not use your data for advertising, profiling, or training
+        machine-learning models.
+      </p>
+
+      <h2>4. Where your data is stored</h2>
+      <p>
+        All run data is stored locally on your device in a SQLite database
+        managed by the app. Runnerd does not operate any servers that receive
+        your data, and your data is never transmitted to us or to any third
+        party.
+      </p>
+
+      <h2>5. Background location</h2>
+      <p>
+        When you start a run, Runnerd requests permission to use your location,
+        including in the background. Background location is used only while a
+        run is active so that distance and pace continue to be measured when
+        your screen is locked or you switch to another app. iOS displays the
+        blue status-bar indicator while background tracking is in progress.
+        Background tracking stops as soon as you end the run.
+      </p>
+
+      <h2>6. Notifications</h2>
+      <p>
+        If you grant notification permission, Runnerd schedules local
+        notifications on your device at the halfway and finish points of a
+        timed run. These notifications are generated on-device. Runnerd does
+        not use push notifications and does not send any data to a
+        notification server.
+      </p>
+
+      <h2>7. Third parties and SDKs</h2>
+      <p>
+        Runnerd does not use third-party analytics, advertising, attribution,
+        or tracking SDKs. The app uses the standard operating-system APIs and
+        open-source libraries (React Native, Expo, SQLite) that run locally on
+        your device.
+      </p>
+
+      <h2>8. Your choices and rights</h2>
+      <ul>
+        <li>
+          <strong>Revoke permissions</strong> at any time in
+          <code>Settings &rsaquo; Privacy &amp; Security &rsaquo; Location
+          Services</code> and <code>Settings &rsaquo; Notifications</code>.
+          Runnerd cannot record runs without location permission.
+        </li>
+        <li>
+          <strong>Delete individual runs</strong> from the History screen in
+          the app.
+        </li>
+        <li>
+          <strong>Delete all data</strong> by uninstalling Runnerd from your
+          device. Because all data is stored locally, uninstalling removes it
+          completely.
+        </li>
+      </ul>
+      <p>
+        If you are located in the EEA, the United Kingdom, or another region
+        with comparable privacy laws, you have the right to access, correct,
+        delete, restrict, or object to processing of your personal data, and
+        the right to data portability. Because Runnerd stores your data only
+        on your own device and never receives a copy, you can exercise these
+        rights directly through the app or by uninstalling it. If you believe
+        we have nonetheless processed your data unlawfully, you may lodge a
+        complaint with your local data protection authority.
+      </p>
+
+      <h2>9. Children</h2>
+      <p>
+        Runnerd is not directed to children under 13, and we do not knowingly
+        collect personal data from children. If you believe a child has
+        provided personal data to us, contact us at
+        <a href="mailto:privacy@runnerd.app">privacy@runnerd.app</a> and we
+        will take appropriate action.
+      </p>
+
+      <h2>10. Security</h2>
+      <p>
+        Because Runnerd stores your data only in the app's private storage on
+        your device, its security depends on your device's protections
+        (device passcode, biometric unlock, and Apple's app sandboxing).
+        Keeping your operating system up to date and using a device passcode
+        is the most effective way to protect your Runnerd data.
+      </p>
+
+      <h2>11. Changes to this policy</h2>
+      <p>
+        We may update this policy from time to time. The current version will
+        always be available at this URL, and the "Last updated" date above
+        will reflect the date of the most recent change. Material changes
+        that expand how Runnerd uses your data will be announced in the app's
+        release notes.
+      </p>
+
+      <h2>12. Contact</h2>
+      <p>
+        Questions about this policy or Runnerd's handling of your data:
+        <a href="mailto:privacy@runnerd.app">privacy@runnerd.app</a>.
+      </p>
+
+      <footer>&copy; 2026 Runnerd.</footer>
+    </main>
+  </body>
+</html>

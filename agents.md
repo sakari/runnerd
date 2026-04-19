@@ -5,3 +5,16 @@
 - Do not change the pnpm `minimumReleaseAge` settings without explicit permission from the user.
 - Use `npx expo install <package>` to install Expo packages. This ensures the installed version is compatible with the project's Expo SDK version.
 - Never force push or rebase. Always merge.
+- A gitleaks pre-commit hook is installed via `.githooks/pre-commit` (activated by the `prepare` npm script). Do not bypass it with `--no-verify` unless a finding has been reviewed and confirmed as a false positive. If gitleaks isn't installed locally, install it so the hook is active:
+  ```bash
+  mkdir -p ~/.local/bin && \
+  curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+    | tar -xz -C ~/.local/bin gitleaks && chmod +x ~/.local/bin/gitleaks
+  ```
+- Keep `docs/privacy-policy.html` in sync with what the app actually does. Whenever a change affects any of the following, update the policy in the same PR and bump its "Last updated" date:
+  - **Data collection or storage** — new sensors/permissions (camera, microphone, motion, HealthKit, contacts, photos), new fields persisted to SQLite, new on-device caches of personal data.
+  - **Network behavior** — any outbound request, sync, backup (iCloud, CloudKit), crash reporting, remote config, or push notifications. Runnerd is currently local-only; adding a network call is a policy-affecting change.
+  - **Third-party SDKs** — adding analytics, advertising, attribution, A/B testing, or any SDK that can phone home. The policy currently states there are none; adding one requires updating sections 2, 3, 4, and 7.
+  - **Tracking** — anything that would flip the App Privacy answer for "Used for Tracking" or require an `NSUserTrackingUsageDescription` / ATT prompt.
+  - **Background modes or permission strings** — changes to `app.json` `ios.infoPlist` (purpose strings, `UIBackgroundModes`, `ITSAppUsesNonExemptEncryption`) must be reflected in the policy's background-location and permissions sections.
+  - **Data deletion paths** — if the way users delete data changes, update section 8.

@@ -13,7 +13,8 @@
     "e2e": "maestro test e2e/",
     "lint": "eslint 'src/**/*.{ts,tsx}' 'App.tsx'",
     "format": "prettier --write 'src/**/*.{ts,tsx}' 'App.tsx'",
-    "format:check": "prettier --check 'src/**/*.{ts,tsx}' 'App.tsx'"
+    "format:check": "prettier --check 'src/**/*.{ts,tsx}' 'App.tsx'",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.15.9",
