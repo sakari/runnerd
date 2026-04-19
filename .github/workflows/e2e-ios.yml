@@ -84,7 +84,19 @@ jobs:
           APP_PATH="build/Build/Products/Release-iphonesimulator/runnerd.app"
           ls -la "$APP_PATH"
           xcrun simctl install "iPhone 16" "$APP_PATH"
-          maestro test --format junit --output maestro-report.xml e2e/
+          maestro test --format junit --output maestro-report.xml e2e/ 2>&1 | tee maestro-output.log
+
+      - name: Emit failure details as annotations
+        if: failure()
+        run: |
+          if [ -f maestro-output.log ]; then
+            CONTENT=$(cat maestro-output.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Maestro output::$CONTENT"
+          fi
+          if [ -f maestro-report.xml ]; then
+            CONTENT=$(cat maestro-report.xml | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Maestro report::$CONTENT"
+          fi
 
       - name: Screenshot on failure
         if: failure()
