@@ -32,7 +32,7 @@ You can build and install a standalone release build on your iPhone for 7 days u
 
 The app runs standalone — no dev server needed. Reinstall every 7 days when the provisioning profile expires.
 
-`pnpm ios:release` wipes `ios/` before building. This forces Expo to re-run its code-signing configuration, which passes `-allowProvisioningUpdates` to xcodebuild so Xcode can fetch a new 7-day profile from Apple. Without the wipe, Expo skips that step once signing is already configured and xcodebuild fails with "No profiles for 'com.runnerd.app' were found" after the old profile expires. Free Apple IDs also tend to rotate the signing certificate on each re-provisioning, which is why step 4 needs repeating.
+`pnpm ios:release` clears `DEVELOPMENT_TEAM` in `ios/runnerd.xcodeproj/project.pbxproj` before building. This forces Expo to re-run its code-signing configuration, which passes `-allowProvisioningUpdates` to xcodebuild so Xcode can fetch a new 7-day profile from Apple. Without the clear, Expo skips that step once signing is already configured and xcodebuild fails with "No profiles for 'com.runnerd.app' were found" after the old profile expires. `ios/Pods` and DerivedData are left alone, so the rebuild is incremental. Free Apple IDs also tend to rotate the signing certificate on each re-provisioning, which is why step 4 needs repeating.
 
 ## Production build (paid Apple Developer account)
 
