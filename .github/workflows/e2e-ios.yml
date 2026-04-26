@@ -1,48 +1,18 @@
 name: E2E iOS
 
 on:
-  issue_comment:
-    types: [created]
-
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
-  statuses: write
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   e2e:
-    if: >
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/run-e2e') &&
-      (github.event.comment.author_association == 'OWNER' ||
-       github.event.comment.author_association == 'MEMBER' ||
-       github.event.comment.author_association == 'COLLABORATOR')
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
-      - name: Set commit status to pending
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.issue.number,
-            });
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: pr.data.head.sha,
-              state: 'pending',
-              context: 'E2E iOS',
-              description: 'Running Maestro E2E tests...',
-            });
-
       - uses: actions/checkout@v4
-        with:
-          ref: refs/pull/${{ github.event.issue.number }}/merge
 
       - uses: pnpm/action-setup@v4
 
@@ -61,6 +31,7 @@ jobs:
         with:
           path: ios/Pods
           key: pods-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pods-
 
       - name: Install CocoaPods
         working-directory: ios
@@ -71,6 +42,27 @@ jobs:
         with:
           path: build
           key: deriveddata-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: deriveddata-
+
+      - name: Prepare Simulator
+        run: |
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+
+          if ! xcrun simctl list runtimes | grep -q "com.apple.CoreSimulator.SimRuntime.iOS"; then
+            echo "No iOS runtime found, downloading..."
+            xcodebuild -downloadPlatform iOS
+          fi
+
+          RUNTIME_ID=$(xcrun simctl list runtimes | grep -oE 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+' | tail -1)
+          echo "Using runtime: $RUNTIME_ID"
+
+          if ! xcrun simctl list devices available | grep -q "iPhone 16"; then
+            xcrun simctl create "iPhone 16" com.apple.CoreSimulator.SimDeviceType.iPhone-16 "$RUNTIME_ID"
+          fi
+
+          xcrun simctl boot "iPhone 16" || true
+          xcrun simctl bootstatus "iPhone 16" -b
 
       - name: Build for Simulator
         run: |
@@ -87,16 +79,24 @@ jobs:
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
-      - name: Boot Simulator
-        run: |
-          xcrun simctl boot "iPhone 16" || true
-          xcrun simctl bootstatus "iPhone 16" -b
-
       - name: Run E2E tests
         run: |
-          APP_PATH=$(find build -name "*.app" -path "*/Release-iphonesimulator/*" | head -1)
+          APP_PATH="build/Build/Products/Release-iphonesimulator/runnerd.app"
+          ls -la "$APP_PATH"
           xcrun simctl install "iPhone 16" "$APP_PATH"
-          maestro test --format junit --output maestro-report.xml e2e/
+          maestro test --format junit --output maestro-report.xml e2e/ 2>&1 | tee maestro-output.log
+
+      - name: Emit failure details as annotations
+        if: failure()
+        run: |
+          if [ -f maestro-output.log ]; then
+            CONTENT=$(cat maestro-output.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Maestro output::$CONTENT"
+          fi
+          if [ -f maestro-report.xml ]; then
+            CONTENT=$(cat maestro-report.xml | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Maestro report::$CONTENT"
+          fi
 
       - name: Screenshot on failure
         if: failure()
@@ -111,41 +111,3 @@ jobs:
             screenshot.png
             maestro-report.xml
             ~/.maestro/tests/**/*
-
-      - name: Set commit status to success
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.issue.number,
-            });
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: pr.data.head.sha,
-              state: 'success',
-              context: 'E2E iOS',
-              description: 'E2E tests passed',
-            });
-
-      - name: Set commit status to failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.issue.number,
-            });
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: pr.data.head.sha,
-              state: 'failure',
-              context: 'E2E iOS',
-              description: 'E2E tests failed',
-            });
