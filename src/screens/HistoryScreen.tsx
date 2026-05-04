@@ -64,6 +64,45 @@ function formatDistanceForEdit(meters: number): string {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
+function formatDateForEdit(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Parses YYYY-MM-DD and returns an ISO string that preserves the time-of-day
+// from `originalIso`. Returns null if the input is not a valid calendar date.
+function parseDateInput(text: string, originalIso: string): string | null {
+  const m = text.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const day = parseInt(m[3], 10);
+  const orig = new Date(originalIso);
+  const base = isNaN(orig.getTime()) ? new Date() : orig;
+  const next = new Date(
+    year,
+    month - 1,
+    day,
+    base.getHours(),
+    base.getMinutes(),
+    base.getSeconds(),
+    base.getMilliseconds(),
+  );
+  // Reject impossible dates (e.g. 2026-02-30 rolls over)
+  if (
+    next.getFullYear() !== year ||
+    next.getMonth() !== month - 1 ||
+    next.getDate() !== day
+  ) {
+    return null;
+  }
+  return next.toISOString();
+}
+
 export default function HistoryScreen() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [period, setPeriod] = useState<Period>("week");
@@ -71,6 +110,7 @@ export default function HistoryScreen() {
   const [editingRun, setEditingRun] = useState<Run | null>(null);
   const [editDuration, setEditDuration] = useState("");
   const [editDistance, setEditDistance] = useState("");
+  const [editDate, setEditDate] = useState("");
 
   const reload = useCallback(() => {
     getAllRuns().then(setRuns);
@@ -86,6 +126,7 @@ export default function HistoryScreen() {
     setEditingRun(run);
     setEditDuration(formatDuration(run.durationSeconds));
     setEditDistance(formatDistanceForEdit(run.distanceMeters));
+    setEditDate(formatDateForEdit(run.startedAt));
   };
 
   const handleSave = async () => {
@@ -100,7 +141,12 @@ export default function HistoryScreen() {
       Alert.alert("Invalid distance", 'Use a number with "km" or "m" (e.g. 5.2 km, 800 m).');
       return;
     }
-    await updateRun(editingRun.id, meters, seconds);
+    const startedAt = parseDateInput(editDate, editingRun.startedAt);
+    if (startedAt === null) {
+      Alert.alert("Invalid date", "Use YYYY-MM-DD format (e.g. 2026-05-04).");
+      return;
+    }
+    await updateRun(editingRun.id, meters, seconds, startedAt);
     setEditingRun(null);
     reload();
   };
@@ -192,6 +238,17 @@ export default function HistoryScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Run</Text>
+
+            <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.input}
+              value={editDate}
+              onChangeText={setEditDate}
+              placeholder="2026-05-04"
+              placeholderTextColor="#555"
+              keyboardType="numbers-and-punctuation"
+              autoCorrect={false}
+            />
 
             <Text style={styles.inputLabel}>Duration (MM:SS or H:MM:SS)</Text>
             <TextInput

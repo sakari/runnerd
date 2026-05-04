@@ -106,6 +106,20 @@ describe("updateRun", () => {
       1,
     );
   });
+
+  it("updates started_at when provided", async () => {
+    mockRunAsync.mockResolvedValue({});
+
+    await updateRun(1, 6000, 2000, "2026-04-09T10:00:00.000Z");
+
+    expect(mockRunAsync).toHaveBeenCalledWith(
+      expect.stringContaining("started_at = ?"),
+      6000,
+      2000,
+      "2026-04-09T10:00:00.000Z",
+      1,
+    );
+  });
 });
 
 describe("softDeleteRun", () => {

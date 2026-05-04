@@ -62,14 +62,25 @@ export async function updateRun(
   id: number,
   distanceMeters: number,
   durationSeconds: number,
+  startedAt?: string,
 ): Promise<void> {
   const d = await getDb();
-  await d.runAsync(
-    "UPDATE runs SET distance_meters = ?, duration_seconds = ? WHERE id = ?",
-    distanceMeters,
-    durationSeconds,
-    id,
-  );
+  if (startedAt !== undefined) {
+    await d.runAsync(
+      "UPDATE runs SET distance_meters = ?, duration_seconds = ?, started_at = ? WHERE id = ?",
+      distanceMeters,
+      durationSeconds,
+      startedAt,
+      id,
+    );
+  } else {
+    await d.runAsync(
+      "UPDATE runs SET distance_meters = ?, duration_seconds = ? WHERE id = ?",
+      distanceMeters,
+      durationSeconds,
+      id,
+    );
+  }
 }
 
 export async function softDeleteRun(id: number): Promise<void> {
