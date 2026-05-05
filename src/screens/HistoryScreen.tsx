@@ -90,16 +90,13 @@ function parseDateInput(text: string, originalIso: string): string | null {
   const base = isNaN(orig.getTime()) ? new Date() : orig;
   const hours = m[4] !== undefined ? parseInt(m[4], 10) : base.getHours();
   const minutes = m[5] !== undefined ? parseInt(m[5], 10) : base.getMinutes();
-  const seconds = m[6] !== undefined ? parseInt(m[6], 10) : m[4] !== undefined ? 0 : base.getSeconds();
+  const seconds =
+    m[6] !== undefined ? parseInt(m[6], 10) : m[4] !== undefined ? 0 : base.getSeconds();
   const ms = m[4] !== undefined ? 0 : base.getMilliseconds();
   if (hours > 23 || minutes > 59 || seconds > 59) return null;
   const next = new Date(year, month - 1, day, hours, minutes, seconds, ms);
   // Reject impossible dates (e.g. 2026-02-30 rolls over)
-  if (
-    next.getFullYear() !== year ||
-    next.getMonth() !== month - 1 ||
-    next.getDate() !== day
-  ) {
+  if (next.getFullYear() !== year || next.getMonth() !== month - 1 || next.getDate() !== day) {
     return null;
   }
   return next.toISOString();
