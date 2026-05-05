@@ -70,28 +70,30 @@ function formatDateForEdit(iso: string): string {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
 }
 
-// Parses YYYY-MM-DD and returns an ISO string that preserves the time-of-day
-// from `originalIso`. Returns null if the input is not a valid calendar date.
+// Parses "YYYY-MM-DD" or "YYYY-MM-DD HH:MM[:SS]" and returns an ISO string.
+// When time is omitted, the time-of-day from `originalIso` is preserved.
+// Returns null if the input is not a valid calendar date or time.
 function parseDateInput(text: string, originalIso: string): string | null {
-  const m = text.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const m = text
+    .trim()
+    .match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
   if (!m) return null;
   const year = parseInt(m[1], 10);
   const month = parseInt(m[2], 10);
   const day = parseInt(m[3], 10);
   const orig = new Date(originalIso);
   const base = isNaN(orig.getTime()) ? new Date() : orig;
-  const next = new Date(
-    year,
-    month - 1,
-    day,
-    base.getHours(),
-    base.getMinutes(),
-    base.getSeconds(),
-    base.getMilliseconds(),
-  );
+  const hours = m[4] !== undefined ? parseInt(m[4], 10) : base.getHours();
+  const minutes = m[5] !== undefined ? parseInt(m[5], 10) : base.getMinutes();
+  const seconds = m[6] !== undefined ? parseInt(m[6], 10) : m[4] !== undefined ? 0 : base.getSeconds();
+  const ms = m[4] !== undefined ? 0 : base.getMilliseconds();
+  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  const next = new Date(year, month - 1, day, hours, minutes, seconds, ms);
   // Reject impossible dates (e.g. 2026-02-30 rolls over)
   if (
     next.getFullYear() !== year ||
@@ -143,7 +145,7 @@ export default function HistoryScreen() {
     }
     const startedAt = parseDateInput(editDate, editingRun.startedAt);
     if (startedAt === null) {
-      Alert.alert("Invalid date", "Use YYYY-MM-DD format (e.g. 2026-05-04).");
+      Alert.alert("Invalid date", "Use YYYY-MM-DD or YYYY-MM-DD HH:MM (e.g. 2026-05-04 14:30).");
       return;
     }
     await updateRun(editingRun.id, meters, seconds, startedAt);
@@ -239,12 +241,12 @@ export default function HistoryScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Run</Text>
 
-            <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
+            <Text style={styles.inputLabel}>Date &amp; time (YYYY-MM-DD HH:MM)</Text>
             <TextInput
               style={styles.input}
               value={editDate}
               onChangeText={setEditDate}
-              placeholder="2026-05-04"
+              placeholder="2026-05-04 14:30"
               placeholderTextColor="#555"
               keyboardType="numbers-and-punctuation"
               autoCorrect={false}
