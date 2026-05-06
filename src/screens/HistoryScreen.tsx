@@ -243,7 +243,7 @@ export default function HistoryScreen() {
               style={styles.input}
               value={editDate}
               onChangeText={setEditDate}
-              placeholder="2026-05-04 14:30"
+              placeholder={formatDateForEdit(new Date().toISOString())}
               placeholderTextColor="#555"
               keyboardType="numbers-and-punctuation"
               autoCorrect={false}
