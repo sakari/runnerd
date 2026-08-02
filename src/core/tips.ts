@@ -69,7 +69,10 @@ export function productionApiKey(key: string): string {
  * rather than "not a supporter".
  */
 export function supporterState(info: CustomerInfo | null): SupporterState {
-  if (info === null) return { kind: "unknown" };
+  // Tolerates undefined and a malformed CustomerInfo as well as null: this
+  // reads a shape that crosses the native bridge, so a missing `entitlements`
+  // should hide the widget rather than crash the History screen.
+  if (!info?.entitlements?.active) return { kind: "unknown" };
 
   const entitlement = info.entitlements.active[SUPPORTER_ENTITLEMENT];
   if (!entitlement) return { kind: "none" };
@@ -90,8 +93,7 @@ export function formatSupporterSince(since: Date, locale?: string): string {
  * not exceptions.
  */
 export function tipPackage(offering: PurchasesOffering | null): PurchasesPackage | null {
-  if (!offering) return null;
-  return offering.availablePackages[0] ?? null;
+  return offering?.availablePackages?.[0] ?? null;
 }
 
 /**
@@ -103,9 +105,21 @@ export function tipPackage(offering: PurchasesOffering | null): PurchasesPackage
 export function classifyPurchaseError(error: unknown): TipOutcome {
   if (typeof error !== "object" || error === null) return "failed";
 
-  const e = error as { code?: unknown; readableErrorCode?: unknown; userCancelled?: unknown };
+  const e = error as {
+    code?: unknown;
+    readableErrorCode?: unknown;
+    userInfo?: { readableErrorCode?: unknown };
+    userCancelled?: unknown;
+  };
   const code = typeof e.code === "string" ? e.code : "";
-  const readable = typeof e.readableErrorCode === "string" ? e.readableErrorCode : "";
+  // Top-level readableErrorCode is deprecated in favour of the userInfo copy;
+  // read both so this keeps working whichever one the SDK populates.
+  const readable =
+    typeof e.readableErrorCode === "string"
+      ? e.readableErrorCode
+      : typeof e.userInfo?.readableErrorCode === "string"
+        ? e.userInfo.readableErrorCode
+        : "";
 
   if (e.userCancelled === true) return "cancelled";
   if (code === CODE_CANCELLED || readable === READABLE_CANCELLED) return "cancelled";

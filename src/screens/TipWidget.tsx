@@ -111,7 +111,11 @@ function TipModal({
     const result = await purchaseTip(pkg);
     setOutcome(result);
     if (result === "thanks") {
-      onCustomerInfo(await refreshCustomerInfo());
+      // Only on a successful refresh: pushing a null back would drop the widget
+      // to its "unknown" state and hide it entirely, right after someone paid.
+      // If the refresh fails, the CustomerInfo listener still catches up.
+      const info = await refreshCustomerInfo();
+      if (info) onCustomerInfo(info);
     }
     setBusy(false);
   };

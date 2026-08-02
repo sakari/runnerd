@@ -28,6 +28,13 @@ describe("supporterState", () => {
     expect(supporterState(customerInfo({}))).toEqual({ kind: "none" });
   });
 
+  it("is unknown for a CustomerInfo missing its entitlements", () => {
+    // Shape crosses the native bridge; hide the widget rather than crash.
+    expect(supporterState({} as never)).toEqual({ kind: "unknown" });
+    expect(supporterState({ entitlements: {} } as never)).toEqual({ kind: "unknown" });
+    expect(supporterState(undefined as never)).toEqual({ kind: "unknown" });
+  });
+
   it("ignores unrelated active entitlements", () => {
     const info = customerInfo({ something_else: { originalPurchaseDate: "2026-03-04" } });
 
@@ -69,6 +76,10 @@ describe("tipPackage", () => {
     expect(tipPackage(offering([]))).toBeNull();
   });
 
+  it("returns null when the offering has no availablePackages field", () => {
+    expect(tipPackage({} as never)).toBeNull();
+  });
+
   it("returns the single package", () => {
     const pkg = { identifier: "tip" };
 
@@ -95,6 +106,34 @@ describe("classifyPurchaseError", () => {
     expect(classifyPurchaseError({ readableErrorCode: "PURCHASE_CANCELLED_ERROR" })).toBe(
       "cancelled",
     );
+  });
+
+  it("reads the readable code from userInfo when the top-level one is absent", () => {
+    expect(
+      classifyPurchaseError({ userInfo: { readableErrorCode: "PURCHASE_CANCELLED_ERROR" } }),
+    ).toBe("cancelled");
+    expect(
+      classifyPurchaseError({ userInfo: { readableErrorCode: "PAYMENT_PENDING_ERROR" } }),
+    ).toBe("pending");
+  });
+
+  it("matches the shape the SDK actually rejects with", () => {
+    // react-native-purchases sets userCancelled from code === "1" and rethrows.
+    const cancelled = Object.assign(new Error("cancelled"), {
+      code: "1",
+      userCancelled: true,
+      readableErrorCode: "PURCHASE_CANCELLED_ERROR",
+      userInfo: { readableErrorCode: "PURCHASE_CANCELLED_ERROR" },
+    });
+    expect(classifyPurchaseError(cancelled)).toBe("cancelled");
+
+    const network = Object.assign(new Error("net"), {
+      code: "10",
+      userCancelled: false,
+      readableErrorCode: "NETWORK_ERROR",
+      userInfo: { readableErrorCode: "NETWORK_ERROR" },
+    });
+    expect(classifyPurchaseError(network)).toBe("failed");
   });
 
   it("treats a pending payment as pending", () => {
