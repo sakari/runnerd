@@ -90,8 +90,12 @@ No code. Roughly 10 minutes.
 ### 3.1 Dependencies
 
 ```bash
-npx expo install react-native-purchases expo-dev-client
+npx expo install react-native-purchases expo-dev-client expo-secure-store
 ```
+
+`expo-secure-store` is for the stable app user ID in §3.5. Use
+`npx expo install` rather than a pinned version — the SDK-54-compatible
+release isn't reachable via an npm dist-tag.
 
 `react-native-purchases@10.6.0` ships no Expo config plugin — only a podspec
 and a Gradle module — so autolinking handles it and `app.json` does not
@@ -187,7 +191,80 @@ it("refuses a test_ key on the production path", () => {
 additionally refuse a `test_` key when `!__DEV__` once a production build path
 exists.
 
-### 3.5 UI
+### 3.5 Surviving reinstall: the app user ID
+
+There are three layers of identity here, and it's worth being precise about
+which one does what, because they're easy to conflate.
+
+**1. The store account — already sufficient, costs one tap.** `restorePurchases()`
+asks StoreKit/Play what this Apple ID or Google account owns. That *is* a
+persistent identifier, and a better one than anything we could invent: it
+survives reinstall, a new device, and a factory reset. It is the reason the
+Restore link exists and the reason no server-side account is needed.
+
+**2. A Keychain-backed app user ID — makes it automatic on iOS.** RevenueCat's
+anonymous ID lives in `UserDefaults`/`SharedPreferences`, which the OS wipes on
+uninstall. Generating our own UUID once and keeping it in `expo-secure-store`
+changes that on iOS, because Keychain items outlive app deletion:
+
+```ts
+// src/platform/identity.ts
+const KEY = "runnerd.appUserId";
+export async function stableAppUserId(): Promise<string> {
+  const existing = await SecureStore.getItemAsync(KEY);
+  if (existing) return existing;
+  const id = randomUUID();
+  await SecureStore.setItemAsync(KEY, id);
+  return id;
+}
+```
+
+Pass it to `configure({ apiKey, appUserID })` — **not** to `logIn()` after the
+fact. `configure` takes an optional `appUserID` directly (verified in the
+10.6.0 typings), which avoids creating an anonymous user and then aliasing it.
+
+Verified properties of `expo-secure-store` (typings for 55.0.16, the closest
+published release to ours):
+
+- `keychainAccessible` defaults to `WHEN_UNLOCKED`, and the `_THIS_DEVICE_ONLY`
+  variants are documented as the ones *not* migrated to a new device on
+  restore-from-backup. So the default also carries the ID onto a new phone set
+  up from an encrypted backup — better than plain reinstall survival.
+- There is **no** `synchronizable` option (`kSecAttrSynchronizable`), so the
+  value is not live-synced through iCloud Keychain. A second device set up
+  fresh is a different user until Restore is tapped.
+
+**Android gets nothing from this.** `expo-secure-store` there is
+`SharedPreferences` encrypted with a Keystore key, and both are removed on
+uninstall. Android leans on Play restore, which is reliable enough that this
+doesn't matter.
+
+**Caveat worth stating plainly:** Keychain-survives-uninstall is long-standing
+observed behaviour, not a documented guarantee — Apple has called it undefined
+and briefly changed it in an iOS 10.3 beta before reverting. Treat it as a
+nice-to-have that removes a tap, never as the mechanism of record. The Restore
+link stays regardless.
+
+**3. A real account (Sign in with Apple).** The only option giving a genuine
+cross-device, cross-platform identity. It needs a paid Apple Developer account
+for the capability and adds a login flow to an app that is otherwise entirely
+local and account-free. For a €1 tip that grants a heart icon, that is not a
+trade worth making. Explicitly rejected.
+
+**The argument that actually decides it: testability.** Test Store purchases
+have no Apple ID behind them — they are tied to the RevenueCat app user ID and
+nothing else. So on a fresh anonymous install, `restorePurchases()` has
+literally nothing to find, and **layer 1 cannot be tested at all until there's
+a paid account**. With a stable ID from SecureStore, the reinstall-persistence
+story becomes testable today, because the identity is ours rather than Apple's.
+That is why §3.5 is in the plan and not deferred.
+
+One dashboard setting to be aware of while testing: the project's restore
+behaviour controls what happens when a purchase is restored onto a *different*
+app user ID (transfer vs. keep with the original). It's the knob to check if a
+restore appears to do nothing.
+
+### 3.6 UI
 
 - `src/screens/TipModal.tsx` — a short blurb, one **Tip `{priceString}`**
   button (the price comes from the package, never a literal), thank-you and
@@ -278,26 +355,31 @@ second reason to commit it.
 Three PRs. They can be collapsed into one if the review overhead isn't worth
 it — the total diff is small.
 
-1. **SDK + core + platform + policy.** Dependencies, `src/core/tips.ts`,
-   `src/platform/purchases.ts`, both test files, `configurePurchases()` wired
-   into `App.tsx`, and the `docs/privacy-policy.html` rewrite (sections 2, 3,
-   4, 7 + date bump). No user-visible change yet.
+1. **SDK + core + platform + identity + policy.** Dependencies,
+   `src/core/tips.ts`, `src/platform/purchases.ts`,
+   `src/platform/identity.ts`, their test files, `configurePurchases()` wired
+   into `App.tsx` with the stable app user ID, and the
+   `docs/privacy-policy.html` rewrite (sections 2, 3, 4, 7 + date bump). No
+   user-visible change yet.
 2. **Tip UI.** `TipModal.tsx` (including Restore purchases), the
    `useSupporter()` hook, the three-state History header widget, test IDs.
 3. **E2E.** `e2e/tip.yaml` for the success, persistence-across-relaunch,
-   cancel, and failure flows.
+   cancel, and failure flows. Reinstall persistence needs a real
+   uninstall/reinstall rather than `clearState`, so it stays a manual check on
+   a device — noted in the PR rather than automated.
 
 A README note on needing a dev build for tip work belongs in PR 1 or 2.
 
 ## 6. Risks
 
-- **Anonymous app user IDs don't survive reinstall.** Without a login system,
-  RevenueCat generates an anonymous ID stored on the device. Delete the app,
-  reinstall, and the user is no longer a supporter until they tap **Restore
-  purchases** — which is why that link isn't optional, independently of
-  Apple's rule. Restore works because the purchase is tied to their store
-  account; nothing more is needed. Worth a line of copy in the modal so it
-  isn't experienced as "I paid and it forgot me".
+- **Reinstall loses supporter status on Android, and on iOS if the Keychain
+  trick fails.** §3.5 covers the layers. The residual risk is that Keychain
+  survival is undocumented behaviour, so the honest posture is: Restore is the
+  mechanism, the stable ID is an optimisation. Worth a line of copy in the
+  modal so a lost badge isn't experienced as "I paid and it forgot me".
+- **A stable app user ID is device identity, not user identity.** Two devices
+  are two RevenueCat users until Restore is tapped on the second. Fine here;
+  it would not be fine for anything with real value behind it.
 - **Flicker on cold start.** If `unknown` is rendered as `none`, a supporter
   sees the tip button for a moment on every launch. The three-state union
   exists specifically to prevent this; it's the first thing to check by hand.
