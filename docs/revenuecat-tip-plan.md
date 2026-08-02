@@ -11,13 +11,13 @@ Connect products, no Play Console.
 These were open questions; the plan proceeds on the defaults below. Each notes
 what changing it costs.
 
-| Decision | Assumed | Cost to change later |
-|---|---|---|
-| What a tip grants | **A permanent `supporter` entitlement.** Once tipped, the tip widget is replaced by a thank-you state, for good. | — this is now the requirement, not an assumption. |
-| Product type | **Non-consumable** (one-time, restorable). On the Test Store it's simply a non-subscription product; the consumable/non-consumable split only becomes real when App Store Connect products exist. | Low now, higher once real products are live — the type is fixed at product creation in App Store Connect. |
-| Tip amount | **One product at roughly €1 / $1.** A single package in the `default` offering; no tiers. | Low — adding tiers means adding products in the dashboard and mapping over `availablePackages` instead of taking the first. |
-| Post-tip display | **"Supporter since <month year>"**, read from the entitlement's `originalPurchaseDate`. | None — it's one string. |
-| Where the UI lives | **Heart icon in the History screen header**, opening a modal. | Low. Moving it to a new About tab is a `App.tsx` navigator change plus a screen; the modal itself is reusable as-is. |
+| Decision           | Assumed                                                                                                                                                                                           | Cost to change later                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| What a tip grants  | **A permanent `supporter` entitlement.** Once tipped, the tip widget is replaced by a thank-you state, for good.                                                                                  | — this is now the requirement, not an assumption.                                                                           |
+| Product type       | **Non-consumable** (one-time, restorable). On the Test Store it's simply a non-subscription product; the consumable/non-consumable split only becomes real when App Store Connect products exist. | Low now, higher once real products are live — the type is fixed at product creation in App Store Connect.                   |
+| Tip amount         | **One product at roughly €1 / $1.** A single package in the `default` offering; no tiers.                                                                                                         | Low — adding tiers means adding products in the dashboard and mapping over `availablePackages` instead of taking the first. |
+| Post-tip display   | **"Supporter since <month year>"**, read from the entitlement's `originalPurchaseDate`.                                                                                                           | None — it's one string.                                                                                                     |
+| Where the UI lives | **Heart icon in the History screen header**, opening a modal.                                                                                                                                     | Low. Moving it to a new About tab is a `App.tsx` navigator change plus a screen; the modal itself is reusable as-is.        |
 
 Making the tip permanently change the UI has three consequences that a
 grants-nothing tip would have avoided, and they drive most of what follows:
@@ -29,7 +29,7 @@ grants-nothing tip would have avoided, and they drive most of what follows:
    affordance for non-consumables (guideline 3.1.1), and it's needed in
    practice regardless — see the anonymous-ID risk in §6.
 3. **The UI now has three states, not two** — supporter, not-supporter, and
-   *unknown* while `CustomerInfo` is still loading. Rendering "unknown" as
+   _unknown_ while `CustomerInfo` is still loading. Rendering "unknown" as
    "not-supporter" makes the widget flicker into existence for people who
    already paid, which is the worst of the three failure modes.
 
@@ -90,12 +90,8 @@ No code. Roughly 10 minutes.
 ### 3.1 Dependencies
 
 ```bash
-npx expo install react-native-purchases expo-dev-client expo-secure-store
+npx expo install react-native-purchases expo-dev-client
 ```
-
-`expo-secure-store` is for the stable app user ID in §3.5. Use
-`npx expo install` rather than a pinned version — the SDK-54-compatible
-release isn't reachable via an npm dist-tag.
 
 `react-native-purchases@10.6.0` ships no Expo config plugin — only a podspec
 and a Gradle module — so autolinking handles it and `app.json` does not
@@ -108,11 +104,7 @@ Uses a **type-only** import, so vitest never loads the native module and this
 file needs no mocks at all (verified against this project's vitest 4.1.2).
 
 ```ts
-import type {
-  CustomerInfo,
-  PurchasesPackage,
-  PurchasesError,
-} from "react-native-purchases";
+import type { CustomerInfo, PurchasesPackage, PurchasesError } from "react-native-purchases";
 
 export const SUPPORTER = "supporter";
 
@@ -191,78 +183,53 @@ it("refuses a test_ key on the production path", () => {
 additionally refuse a `test_` key when `!__DEV__` once a production build path
 exists.
 
-### 3.5 Surviving reinstall: the app user ID
+### 3.5 Reinstall: restore, not a persistent ID
 
-There are three layers of identity here, and it's worth being precise about
-which one does what, because they're easy to conflate.
+**Decision: no custom app user ID. Ship the anonymous ID plus a Restore
+button.** Recorded here with the evidence so it doesn't get re-litigated.
 
-**1. The store account — already sufficient, costs one tap.** `restorePurchases()`
-asks StoreKit/Play what this Apple ID or Google account owns. That *is* a
-persistent identifier, and a better one than anything we could invent: it
-survives reinstall, a new device, and a factory reset. It is the reason the
-Restore link exists and the reason no server-side account is needed.
+Losing entitlements on reinstall and recovering them with an explicit Restore
+tap is not a wart to engineer around — it is the platform's intended design and
+the near-universal convention:
 
-**2. A Keychain-backed app user ID — makes it automatic on iOS.** RevenueCat's
-anonymous ID lives in `UserDefaults`/`SharedPreferences`, which the OS wipes on
-uninstall. Generating our own UUID once and keeping it in `expo-secure-store`
-changes that on iOS, because Keychain items outlive app deletion:
+- **Apple requires the button anyway.** Guideline 3.1.1 mandates a Restore
+  Purchases control for any app selling non-consumables or subscriptions, so
+  users can regain access _on a new device or after a reinstall_. A missing or
+  broken one is a routine rejection. The button is not optional work we'd be
+  saving by adding a persistent ID — it ships either way.
+- **RevenueCat says not to automate it.** Their docs state `restorePurchases`
+  should not be triggered programmatically because it can raise OS-level
+  sign-in prompts, and should only run from a deliberate user action.
+- **The Keychain trick is explicitly discouraged by Apple.** Apple staff
+  describe Keychain surviving uninstall as a side-effect of the implementation
+  rather than a feature, not to be relied upon — and they did briefly remove
+  the behaviour in an iOS 10.3 beta before reverting under pressure.
 
-```ts
-// src/platform/identity.ts
-const KEY = "runnerd.appUserId";
-export async function stableAppUserId(): Promise<string> {
-  const existing = await SecureStore.getItemAsync(KEY);
-  if (existing) return existing;
-  const id = randomUUID();
-  await SecureStore.setItemAsync(KEY, id);
-  return id;
-}
-```
+So the previous plan's `expo-secure-store` app user ID would have added a
+dependency and a module to avoid one tap, in a way Apple advises against, while
+not removing any required work. Dropped.
 
-Pass it to `configure({ apiKey, appUserID })` — **not** to `logIn()` after the
-fact. `configure` takes an optional `appUserID` directly (verified in the
-10.6.0 typings), which avoids creating an anonymous user and then aliasing it.
+What ships instead: the SDK's anonymous ID, and a **Restore purchases** link in
+the tip modal. Reinstall → tap Restore → the store account returns the
+purchase → supporter again. Three-device, cross-platform, and factory-reset
+cases are all covered by the same path, because the identity is the App Store
+or Play account rather than anything on the device.
 
-Verified properties of `expo-secure-store` (typings for 55.0.16, the closest
-published release to ours):
+Two notes for later, neither in scope now:
 
-- `keychainAccessible` defaults to `WHEN_UNLOCKED`, and the `_THIS_DEVICE_ONLY`
-  variants are documented as the ones *not* migrated to a new device on
-  restore-from-backup. So the default also carries the ID onto a new phone set
-  up from an encrypted backup — better than plain reinstall survival.
-- There is **no** `synchronizable` option (`kSecAttrSynchronizable`), so the
-  value is not live-synced through iCloud Keychain. A second device set up
-  fresh is a different user until Restore is tapped.
+- `syncPurchases()` is RevenueCat's sanctioned _programmatic_ alternative — it
+  does not raise sign-in prompts, and their guidance is to call it once on the
+  first launch after install rather than on every launch. That is the correct
+  hook if automatic recovery ever becomes worth it.
+- Sign in with Apple remains the only true cross-device identity, and remains
+  overkill for a EUR 1 tip that grants a heart icon.
 
-**Android gets nothing from this.** `expo-secure-store` there is
-`SharedPreferences` encrypted with a Keystore key, and both are removed on
-uninstall. Android leans on Play restore, which is reliable enough that this
-doesn't matter.
-
-**Caveat worth stating plainly:** Keychain-survives-uninstall is long-standing
-observed behaviour, not a documented guarantee — Apple has called it undefined
-and briefly changed it in an iOS 10.3 beta before reverting. Treat it as a
-nice-to-have that removes a tap, never as the mechanism of record. The Restore
-link stays regardless.
-
-**3. A real account (Sign in with Apple).** The only option giving a genuine
-cross-device, cross-platform identity. It needs a paid Apple Developer account
-for the capability and adds a login flow to an app that is otherwise entirely
-local and account-free. For a €1 tip that grants a heart icon, that is not a
-trade worth making. Explicitly rejected.
-
-**The argument that actually decides it: testability.** Test Store purchases
-have no Apple ID behind them — they are tied to the RevenueCat app user ID and
-nothing else. So on a fresh anonymous install, `restorePurchases()` has
-literally nothing to find, and **layer 1 cannot be tested at all until there's
-a paid account**. With a stable ID from SecureStore, the reinstall-persistence
-story becomes testable today, because the identity is ours rather than Apple's.
-That is why §3.5 is in the plan and not deferred.
-
-One dashboard setting to be aware of while testing: the project's restore
-behaviour controls what happens when a purchase is restored onto a *different*
-app user ID (transfer vs. keep with the original). It's the knob to check if a
-restore appears to do nothing.
+**Consequence for testing:** Test Store purchases are tied to the RevenueCat
+app user ID with no store account behind them, so a fresh install has nothing
+for `restorePurchases()` to find. The restore path therefore cannot be
+meaningfully exercised until a paid account and real products exist. The
+Restore button still ships — it just has nothing to prove against the Test
+Store, and the modal's nothing-to-restore state is what gets tested there.
 
 ### 3.6 UI
 
@@ -276,6 +243,7 @@ restore appears to do nothing.
   The confirm step is deliberate: a heart tap that goes straight to a payment
   sheet reads as a dark pattern, and with one fixed amount the modal is small
   enough that it costs nothing.
+
 - `src/screens/HistoryScreen.tsx` — the widget in the header, rendering from
   `SupporterState`:
   - `unknown` → render nothing (no placeholder, no spinner — it resolves in
@@ -286,6 +254,7 @@ restore appears to do nothing.
     widget" half of the requirement.
 
   The screen already imports `Ionicons` and `Modal`, so this adds no new deps.
+
 - `App.tsx` — `configurePurchases(...)` in the existing `useEffect` alongside
   `setupNotificationHandler()`.
 - Supporter state lives in a small `useSupporter()` hook (a `.tsx` or a
@@ -355,31 +324,24 @@ second reason to commit it.
 Three PRs. They can be collapsed into one if the review overhead isn't worth
 it — the total diff is small.
 
-1. **SDK + core + platform + identity + policy.** Dependencies,
-   `src/core/tips.ts`, `src/platform/purchases.ts`,
-   `src/platform/identity.ts`, their test files, `configurePurchases()` wired
-   into `App.tsx` with the stable app user ID, and the
-   `docs/privacy-policy.html` rewrite (sections 2, 3, 4, 7 + date bump). No
-   user-visible change yet.
+1. **SDK + core + platform + policy.** Dependencies, `src/core/tips.ts`,
+   `src/platform/purchases.ts`, both test files, `configurePurchases()` wired
+   into `App.tsx`, and the `docs/privacy-policy.html` rewrite (sections 2, 3,
+   4, 7 + date bump). No user-visible change yet.
 2. **Tip UI.** `TipModal.tsx` (including Restore purchases), the
    `useSupporter()` hook, the three-state History header widget, test IDs.
 3. **E2E.** `e2e/tip.yaml` for the success, persistence-across-relaunch,
-   cancel, and failure flows. Reinstall persistence needs a real
-   uninstall/reinstall rather than `clearState`, so it stays a manual check on
-   a device — noted in the PR rather than automated.
+   cancel, and failure flows.
 
 A README note on needing a dev build for tip work belongs in PR 1 or 2.
 
 ## 6. Risks
 
-- **Reinstall loses supporter status on Android, and on iOS if the Keychain
-  trick fails.** §3.5 covers the layers. The residual risk is that Keychain
-  survival is undocumented behaviour, so the honest posture is: Restore is the
-  mechanism, the stable ID is an optimisation. Worth a line of copy in the
-  modal so a lost badge isn't experienced as "I paid and it forgot me".
-- **A stable app user ID is device identity, not user identity.** Two devices
-  are two RevenueCat users until Restore is tapped on the second. Fine here;
-  it would not be fine for anything with real value behind it.
+- **Reinstall drops supporter status until Restore is tapped.** By design
+  (§3.5), and the platform convention — but still worth a line of copy in the
+  modal so a lost badge isn't experienced as "I paid and it forgot me". The
+  nothing-to-restore case must say so plainly rather than silently no-op;
+  that specific silent failure is a documented source of 3.1.1 rejections.
 - **Flicker on cold start.** If `unknown` is rendered as `none`, a supporter
   sees the tip button for a moment on every launch. The three-state union
   exists specifically to prevent this; it's the first thing to check by hand.
