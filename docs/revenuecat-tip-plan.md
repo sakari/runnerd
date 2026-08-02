@@ -2,6 +2,23 @@
 
 Implementation plan. Background research is in [`revenuecat.md`](./revenuecat.md).
 
+> **Status: implemented.** Where the shipped code differs from the plan below:
+>
+> - `react-native-purchases` resolved to **10.5.0**, not 10.6.0 — the newer
+>   release is inside the repo's 3-day `minimumReleaseAge` window. The APIs
+>   used were re-verified against 10.5.0.
+> - **`expo-dev-client` was not installed.** The project already builds
+>   natively via `expo run:ios`, which is all the SDK needs; the dev client
+>   only adds a launcher UI.
+> - `REVENUECAT_TEST_KEY` ships **empty**, pending the dashboard setup in §2.
+>   While empty the SDK is never configured and the tip widget renders nothing.
+> - The UI is one component, `src/screens/TipWidget.tsx` (hook + badge +
+>   modal), mounted as the History screen's `headerRight`. No context provider
+>   was needed — the widget is the only consumer of supporter state.
+> - `e2e/tip.yaml` guards every block on `tip-open` being visible, so it
+>   **passes without testing anything** until the key is set. That is a real
+>   gap, not a covered case.
+
 **Goal:** an optional "support Runnerd" tip, running entirely against the
 RevenueCat **Test Store** — no paid Apple Developer account, no App Store
 Connect products, no Play Console.

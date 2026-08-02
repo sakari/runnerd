@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useLayoutEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,12 +11,13 @@ import {
   Animated,
   PanResponder,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Run, Period, Summary } from "../core/types";
 import { formatDuration, formatDistance, formatPace } from "../core/geo";
 import { summarize } from "../core/summaries";
 import { getAllRuns, softDeleteRun, restoreRun, updateRun } from "../db/database";
+import TipWidget from "./TipWidget";
 
 const PERIODS: Period[] = ["week", "month", "year"];
 
@@ -111,9 +112,17 @@ export default function HistoryScreen() {
   const [editDistance, setEditDistance] = useState("");
   const [editDate, setEditDate] = useState("");
 
+  const navigation = useNavigation();
+
   const reload = useCallback(() => {
     getAllRuns().then(setRuns);
   }, []);
+
+  // TipWidget is a stable component reference, so its state survives header
+  // re-renders.
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerRight: () => <TipWidget /> });
+  }, [navigation]);
 
   useFocusEffect(
     useCallback(() => {

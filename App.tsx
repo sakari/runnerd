@@ -4,6 +4,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { setupNotificationHandler } from "./src/platform/time-notifications";
+import { configurePurchases } from "./src/platform/purchases";
+import { REVENUECAT_TEST_KEY } from "./src/core/tips";
 import TimerScreen from "./src/screens/TimerScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 
@@ -14,6 +16,8 @@ export default function App() {
     // Only set up the handler at launch. Permission prompts are requested
     // in-context when the user first taps Start, per App Store guideline 5.1.1(ii).
     setupNotificationHandler();
+    // No-op while REVENUECAT_TEST_KEY is empty, which keeps the tip UI hidden.
+    configurePurchases(REVENUECAT_TEST_KEY, __DEV__);
   }, []);
 
   return (

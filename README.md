@@ -42,6 +42,29 @@ eas login
 eas build --platform ios --profile production
 ```
 
+## Tip jar (RevenueCat Test Store)
+
+Runnerd has an optional one-off tip that unlocks nothing and shows a
+"Supporter since …" badge once paid. It runs against the RevenueCat **Test
+Store**, so it needs no paid Apple Developer account and no App Store Connect
+products.
+
+**It is inert until a key is set.** `REVENUECAT_TEST_KEY` in
+`src/core/tips.ts` is empty, so the SDK is never configured, the tip widget
+renders nothing, and `e2e/tip.yaml` skips its whole body. To turn it on:
+
+1. In the RevenueCat dashboard, enable the Test Store, create one
+   non-subscription product priced at roughly EUR 1, put it in the `default`
+   offering, and attach it to a `supporter` entitlement.
+2. Paste the `test_…` key into `REVENUECAT_TEST_KEY`. It is a public client
+   key that ships in the app binary either way, so committing it is fine — see
+   `docs/revenuecat-tip-plan.md` for why, and for the guard that stops it
+   reaching a production build.
+
+The tip path needs a native build (`pnpm ios` or `pnpm ios:release`). In Expo
+Go the SDK falls back to Preview API Mode and the tip button silently does
+nothing.
+
 ## Scripts
 
 | Command | Description |

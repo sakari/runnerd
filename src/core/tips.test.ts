@@ -1,0 +1,148 @@
+import { describe, it, expect } from "vitest";
+import type { CustomerInfo, PurchasesOffering } from "react-native-purchases";
+import {
+  SUPPORTER_ENTITLEMENT,
+  REVENUECAT_TEST_KEY,
+  classifyPurchaseError,
+  formatSupporterSince,
+  isTestStoreKey,
+  productionApiKey,
+  supporterState,
+  tipPackage,
+} from "./tips";
+
+function customerInfo(active: Record<string, { originalPurchaseDate: string }>): CustomerInfo {
+  return { entitlements: { active } } as unknown as CustomerInfo;
+}
+
+function offering(packages: unknown[]): PurchasesOffering {
+  return { availablePackages: packages } as unknown as PurchasesOffering;
+}
+
+describe("supporterState", () => {
+  it("is unknown before CustomerInfo has loaded", () => {
+    expect(supporterState(null)).toEqual({ kind: "unknown" });
+  });
+
+  it("is none when the supporter entitlement is absent", () => {
+    expect(supporterState(customerInfo({}))).toEqual({ kind: "none" });
+  });
+
+  it("ignores unrelated active entitlements", () => {
+    const info = customerInfo({ something_else: { originalPurchaseDate: "2026-03-04" } });
+
+    expect(supporterState(info)).toEqual({ kind: "none" });
+  });
+
+  it("is supporter with the original purchase date", () => {
+    const info = customerInfo({
+      [SUPPORTER_ENTITLEMENT]: { originalPurchaseDate: "2026-03-04T10:00:00Z" },
+    });
+
+    const state = supporterState(info);
+
+    expect(state.kind).toBe("supporter");
+    expect(state.kind === "supporter" && state.since?.toISOString()).toBe(
+      "2026-03-04T10:00:00.000Z",
+    );
+  });
+
+  it("is supporter with a null date when the date is unparseable", () => {
+    const info = customerInfo({ [SUPPORTER_ENTITLEMENT]: { originalPurchaseDate: "nonsense" } });
+
+    expect(supporterState(info)).toEqual({ kind: "supporter", since: null });
+  });
+});
+
+describe("formatSupporterSince", () => {
+  it("formats as month and year", () => {
+    expect(formatSupporterSince(new Date("2026-03-04T10:00:00Z"), "en-US")).toBe("March 2026");
+  });
+});
+
+describe("tipPackage", () => {
+  it("returns null when there is no offering", () => {
+    expect(tipPackage(null)).toBeNull();
+  });
+
+  it("returns null when the offering has no packages", () => {
+    expect(tipPackage(offering([]))).toBeNull();
+  });
+
+  it("returns the single package", () => {
+    const pkg = { identifier: "tip" };
+
+    expect(tipPackage(offering([pkg]))).toBe(pkg);
+  });
+
+  it("returns the first package when the dashboard has more than one", () => {
+    const first = { identifier: "tip" };
+
+    expect(tipPackage(offering([first, { identifier: "other" }]))).toBe(first);
+  });
+});
+
+describe("classifyPurchaseError", () => {
+  it("treats the deprecated userCancelled flag as a cancellation", () => {
+    expect(classifyPurchaseError({ userCancelled: true })).toBe("cancelled");
+  });
+
+  it("treats the cancellation code as a cancellation", () => {
+    expect(classifyPurchaseError({ code: "1" })).toBe("cancelled");
+  });
+
+  it("treats the readable cancellation code as a cancellation", () => {
+    expect(classifyPurchaseError({ readableErrorCode: "PURCHASE_CANCELLED_ERROR" })).toBe(
+      "cancelled",
+    );
+  });
+
+  it("treats a pending payment as pending", () => {
+    expect(classifyPurchaseError({ code: "20" })).toBe("pending");
+    expect(classifyPurchaseError({ readableErrorCode: "PAYMENT_PENDING_ERROR" })).toBe("pending");
+  });
+
+  it("treats an already-owned product as thanks", () => {
+    expect(classifyPurchaseError({ code: "6" })).toBe("thanks");
+    expect(classifyPurchaseError({ readableErrorCode: "PRODUCT_ALREADY_PURCHASED_ERROR" })).toBe(
+      "thanks",
+    );
+  });
+
+  it("treats anything else as a failure", () => {
+    expect(classifyPurchaseError({ code: "10" })).toBe("failed");
+    expect(classifyPurchaseError({ userCancelled: false })).toBe("failed");
+    expect(classifyPurchaseError(new Error("boom"))).toBe("failed");
+  });
+
+  it("survives non-object rejections", () => {
+    expect(classifyPurchaseError(null)).toBe("failed");
+    expect(classifyPurchaseError("nope")).toBe("failed");
+    expect(classifyPurchaseError(undefined)).toBe("failed");
+  });
+});
+
+describe("API key handling", () => {
+  it("recognises Test Store keys", () => {
+    expect(isTestStoreKey("test_abc123")).toBe(true);
+    expect(isTestStoreKey("appl_abc123")).toBe(false);
+  });
+
+  it("refuses a Test Store key on the production path", () => {
+    expect(() => productionApiKey("test_abc123")).toThrow(/Test Store key/);
+  });
+
+  it("refuses an empty key on the production path", () => {
+    expect(() => productionApiKey("")).toThrow(/Missing/);
+  });
+
+  it("accepts a store key on the production path", () => {
+    expect(productionApiKey("appl_abc123")).toBe("appl_abc123");
+  });
+
+  it("keeps the committed key out of production builds", () => {
+    // The committed key is a Test Store key (or unset). Either way it must not
+    // be usable as a production key.
+    expect(() => productionApiKey(REVENUECAT_TEST_KEY)).toThrow();
+  });
+});
