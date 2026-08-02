@@ -171,12 +171,8 @@ does get committed.
 
 ### 3.4 Testability
 
-The SDK is a hard native dependency, so unit tests (vitest, node environment)
-should never import it directly. Keep the pure decision logic — which
-entitlement gates what, offering→UI mapping — in `src/core/` where it can be
-tested, and let `src/platform/purchases.ts` stay a thin, untested shim, exactly
-as `src/platform/gps.ts` and `speech.ts` do today. Maestro flows in `e2e/`
-can drive the Test Store's simulated purchase modal.
+The SDK is a hard native dependency, so vitest must never load it for real.
+Both the pure-logic split and the mocking pattern are covered in §5.
 
 ## 4. Testing — Test Store as the sandbox
 
@@ -228,7 +224,205 @@ entitlements, and show up in the Customers dashboard as sandbox data.
   track; the app must be uploaded once for billing to work, and test purchases
   renew on Google's accelerated schedule.
 
-## 5. Suggested order of work
+## 5. Testing the integration
+
+Three layers, cheapest first. The split matters here because
+`vitest.config.ts` enforces **95% line coverage over all of `src/**/*.ts`** —
+a new `src/platform/purchases.ts` cannot simply be left untested, and it can't
+be excluded without weakening the gate. So the shim must be kept thin *and*
+covered.
+
+### 5.1 Pure logic in `src/core/` — no mocks at all
+
+RevenueCat's `CustomerInfo`, `PurchasesOffering` and `PurchasesPackage` are
+plain JSON objects. Anything that *decides* something from them belongs in
+`src/core/` and is testable with zero infrastructure, because a **type-only**
+import is erased at transform time and never loads the native module:
+
+```ts
+// src/core/entitlements.ts
+import type { CustomerInfo, PurchasesOffering } from "react-native-purchases";
+
+export const PRO = "pro";
+
+export function isPro(info: CustomerInfo): boolean {
+  return info.entitlements.active[PRO]?.isActive === true;
+}
+
+export function isTestPurchase(info: CustomerInfo): boolean {
+  return Object.values(info.entitlements.active).some((e) => e.store === "TEST_STORE");
+}
+```
+
+```ts
+// src/core/entitlements.test.ts — plain vitest, no vi.mock anywhere
+import { describe, it, expect } from "vitest";
+import { isPro } from "./entitlements";
+
+it("unlocks pro from an active entitlement", () => {
+  expect(isPro(customerInfo({ pro: { isActive: true } }))).toBe(true);
+});
+```
+
+Verified: with `import type`, a module that throws on import is never loaded by
+vitest, so no mock is needed for this layer at all.
+
+Good candidates for this layer:
+
+- entitlement gating (`isPro`) and expiry/grace handling;
+- offering → view-model mapping (package ordering, "best value" badge, price
+  string selection);
+- **purchase error classification** — map a `PurchasesError` onto a small union
+  (`"cancelled" | "pending" | "network" | "already-owned" | "failed"`) so the
+  screen has no `try/catch` logic of its own. Note the shape: `code` is a
+  `PURCHASES_ERROR_CODE`, and `userCancelled` is `boolean | null` and now
+  deprecated in favour of `code === PURCHASE_CANCELLED_ERROR`.
+
+### 5.2 The platform shim — `vi.mock` with a factory
+
+`src/platform/purchases.ts` gets the same treatment `gps.ts` and
+`time-notifications.ts` already get. The one wrinkle is that the SDK's
+`Purchases` is a **default** export, so the factory must supply `default`:
+
+```ts
+// src/platform/purchases.test.ts
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const { mockConfigure, mockSetLogLevel, mockGetOfferings, mockPurchasePackage } =
+  vi.hoisted(() => ({
+    mockConfigure: vi.fn(),
+    mockSetLogLevel: vi.fn(),
+    mockGetOfferings: vi.fn(),
+    mockPurchasePackage: vi.fn(),
+  }));
+
+vi.mock("react-native-purchases", () => ({
+  default: {
+    configure: mockConfigure,
+    setLogLevel: mockSetLogLevel,
+    getOfferings: mockGetOfferings,
+    purchasePackage: mockPurchasePackage,
+  },
+  LOG_LEVEL: { DEBUG: "DEBUG" },
+  PURCHASES_ERROR_CODE: { PURCHASE_CANCELLED_ERROR: "1", PAYMENT_PENDING_ERROR: "23" },
+}));
+
+import { configurePurchases } from "./purchases";
+```
+
+Verified against this project's vitest 4.1.2: the factory intercepts
+resolution and the real package is never imported, so this works even though
+the module would throw outside a native runtime.
+
+Worth asserting at this layer:
+
+- `configure` is called exactly once, and is a no-op when no key is present;
+- debug logging is only enabled in dev;
+- **a `test_` key can never reach a production build** — this is the one test
+  that earns its keep. Assert that the production key selector rejects a
+  `test_` prefix, so shipping the simulated purchase modal to real users
+  becomes a red test rather than a bad review.
+
+If the shim needs `Platform.select`, note that no `src/**/*.ts` file currently
+imports `react-native`, and vitest runs in node where that import fails. Either
+mock `react-native` too, or — cleaner — take the key as a parameter and let
+`App.tsx` (a `.tsx` file, outside both the vitest `include` glob and the
+coverage `include`) do the platform branch.
+
+### 5.3 Keeping fixtures honest
+
+Hand-written `CustomerInfo` fixtures drift from the real payload on SDK
+upgrades. Two cheap defences:
+
+- type the fixture builders with `satisfies CustomerInfo`, so an SDK bump that
+  changes the shape fails `tsc` rather than passing against a stale mock;
+- seed the fixtures from reality once — log `await Purchases.getCustomerInfo()`
+  from a Test Store dev build (or `GET /customers/{id}` on the v2 REST API with
+  the `sk_` key) and paste the JSON in.
+
+### 5.4 Integration tests — Maestro against the Test Store
+
+This project already has the hard part built: `.github/workflows/e2e-ios.yml`
+prebuilds, compiles a Release simulator app on `macos-15`, and runs `e2e/`
+under Maestro. The Test Store slots straight into it, because it needs no
+Apple account, no sandbox tester, and no App Store Connect products, and it
+explicitly supports simulators and CI runners.
+
+The purchase modal is just UI, so a flow reads naturally:
+
+```yaml
+appId: com.runnerd.app
+---
+- launchApp:
+    clearState: true          # forces a fresh anonymous app user ID per run
+- tapOn:
+    id: "paywall-cta"
+- tapOn: "Simulate purchase"
+- assertVisible:
+    id: "pro-badge"
+```
+
+Deterministic outcomes are the real win: `Simulate failure` and `Cancel` give
+you the two branches that are near-impossible to trigger reliably against a
+real store, so the error paths from §5.1 get end-to-end coverage too.
+
+Practical notes for wiring it into the existing workflow:
+
+- **State isolation.** Entitlements stick to the app user ID, which is
+  persisted on device. `clearState: true` on `launchApp` gives each run a fresh
+  anonymous ID; alternatively call `Purchases.logIn("e2e-<run-id>")` behind a
+  test flag. Without this, run 2 starts already-pro and the paywall test
+  silently passes for the wrong reason.
+- **Key injection.** The CI job builds `-configuration Release`, so a
+  `__DEV__` check will *not* select the test key there. Drive it from the
+  environment instead — set `EXPO_PUBLIC_RC_TEST_KEY` on the build step only,
+  and Metro inlines it into that bundle. Production EAS builds never see it.
+  Keep it in Actions secrets rather than the repo so it can't leak into a
+  production bundle, and so the gitleaks jobs stay quiet.
+- **Accelerated renewals cut both ways.** A monthly test subscription renews
+  every 5 minutes and cancels after 5 renewals — long enough to be irrelevant
+  inside a 25-minute e2e job, but it does make "expired subscription" states
+  reachable in a manual session without waiting a month.
+- **Server-side assertion (optional).** For a belt-and-braces check that the
+  entitlement really landed, hit the v2 REST API with the `sk_` key after the
+  flow and assert the customer has `pro` active. Only worth it if you start
+  relying on webhooks.
+
+### 5.5 What none of this covers
+
+Neither mocks nor the Test Store exercise real StoreKit: receipt validation,
+billing retry / grace periods, Family Sharing, ask-to-buy, upgrade/downgrade
+proration, and price-change consent all need a real sandbox tester on a paid
+account (§4). Treat those as a manual pre-launch checklist, not as automation.
+
+## 6. Aside: tip-style purchases
+
+Yes — RevenueCat handles one-off purchases, and a tip jar is a documented use
+case with a first-party walkthrough. `PRODUCT_CATEGORY` is
+`SUBSCRIPTION | NON_SUBSCRIPTION`, and non-subscription purchases land in
+`customerInfo.nonSubscriptionTransactions` as a list you can read directly.
+
+Which store product type to use:
+
+- **Consumable** — the normal choice for a tip jar, because it can be bought
+  repeatedly. RevenueCat's own tip-jar guide uses consumables.
+- **Non-consumable** — right for a one-time "supporter" unlock that should be
+  restorable on a new device (e.g. a permanent badge or theme).
+
+The gotcha: **do not attach a tip product to an entitlement unless you mean
+it**. A consumable or non-consumable wired to an entitlement unlocks it
+*forever* — there's no expiration date to fall off. For a pure "thanks, no
+strings" tip that grants nothing, leave it out of every entitlement and just
+read `nonSubscriptionTransactions` (or ignore the result entirely and show a
+thank-you). For a supporter unlock, an entitlement is exactly right.
+
+Everything above still applies: tips are IAP, so Apple/Google take their
+15–30% and you cannot route them through Stripe/PayPal for digital tipping on
+iOS. The Test Store covers them too — the `lifetime` product in the
+auto-provisioned default offering is a non-subscription product, so the tip
+flow is testable on day one alongside the subscription flow.
+
+## 7. Suggested order of work
 
 1. Create the RevenueCat account and project; enable Test Store (no Apple/Google
    accounts needed) — minutes.
@@ -256,3 +450,7 @@ entitlements, and show up in the Customers dashboard as sandbox data.
 - [In-App Purchase Key configuration](https://www.revenuecat.com/docs/service-credentials/itunesconnect-app-specific-shared-secret/in-app-purchase-key-configuration)
 - [Connect apps & web providers](https://www.revenuecat.com/docs/projects/connect-a-store)
 - [Expo — Using in-app purchases](https://docs.expo.dev/guides/in-app-purchases/)
+- [Unit testing purchases with the Test Store](https://www.revenuecat.com/blog/engineering/testing-test-store)
+- [Non-subscription purchases](https://www.revenuecat.com/docs/platform-resources/non-subscriptions)
+- [Building a tip jar feature with RevenueCat](https://www.revenuecat.com/blog/engineering/building-a-tip-jar-feature-with-revenuecat)
+- [Entitlements](https://www.revenuecat.com/docs/getting-started/entitlements)
