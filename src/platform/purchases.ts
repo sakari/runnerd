@@ -11,12 +11,22 @@ let configured = false;
  */
 export function configurePurchases(apiKey: string, debug: boolean): boolean {
   if (apiKey === "") return false;
-  if (debug) {
-    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+  try {
+    if (debug) {
+      // Not awaited by the SDK either, but it rejects rather than throws when
+      // the native module is missing, so it needs its own catch.
+      Purchases.setLogLevel(LOG_LEVEL.DEBUG)?.catch?.(() => {});
+    }
+    // Throws synchronously when the native module is absent — the common state
+    // where the dependency is installed but the app has not been rebuilt. This
+    // runs inside App's effect with no error boundary above it, so an escaping
+    // throw would unmount the whole app rather than just hide the tip.
+    Purchases.configure({ apiKey });
+    configured = true;
+    return true;
+  } catch {
+    return false;
   }
-  Purchases.configure({ apiKey });
-  configured = true;
-  return true;
 }
 
 export function isConfigured(): boolean {
@@ -28,7 +38,7 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   if (!configured) return null;
   try {
     const offerings = await Purchases.getOfferings();
-    return offerings.current;
+    return offerings?.current ?? null;
   } catch {
     return null;
   }

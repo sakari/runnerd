@@ -113,9 +113,10 @@
         </li>
         <li>
           <strong>Optional tip purchases.</strong> Runnerd offers an optional
-          one-off tip that supports development. It unlocks no features. If you
-          open the tip screen or make a tip, the app contacts RevenueCat, our
-          purchase-management provider, which receives a randomly generated
+          one-off tip that supports development. It unlocks no features. The app
+          contacts RevenueCat, our purchase-management provider, when it starts,
+          when you open the History screen, and when you open the tip screen or
+          make a tip. RevenueCat receives a randomly generated
           anonymous identifier for your installation, basic app and device
           information (app version, operating-system version, device model,
           country), your IP address, and the details of the purchase itself.
@@ -210,10 +211,12 @@
       </p>
       <p>
         Runnerd includes the <strong>RevenueCat</strong> SDK solely to offer and
-        manage the optional tip. It is contacted only in connection with the tip
-        &mdash; to fetch the current price, to complete a purchase, and to check
-        whether you have already tipped. It receives the data listed in section
-        2, never your location or run history, and it is not used for
+        manage the optional tip. It is contacted only for that purpose &mdash;
+        to check whether you have already tipped, to fetch the current price, and
+        to complete a purchase &mdash; but because the check runs when the app
+        starts and when you open the History screen, it happens whether or not
+        you ever open the tip screen. It receives the data listed in section 2,
+        never your location or run history, and it is not used for
         advertising, profiling, or tracking you across apps or websites. See
         <a href="https://www.revenuecat.com/privacy/">RevenueCat's privacy
         policy</a>.

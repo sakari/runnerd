@@ -11,7 +11,7 @@ const {
   mockRemoveListener,
 } = vi.hoisted(() => ({
   mockConfigure: vi.fn(),
-  mockSetLogLevel: vi.fn(),
+  mockSetLogLevel: vi.fn(() => Promise.resolve()),
   mockGetOfferings: vi.fn(),
   mockPurchasePackage: vi.fn(),
   mockGetCustomerInfo: vi.fn(),
@@ -68,6 +68,26 @@ describe("configurePurchases", () => {
     expect(isConfigured()).toBe(true);
   });
 
+  it("returns false when the native module is missing", () => {
+    // Purchases.configure throws synchronously when the app has not been
+    // rebuilt since the dependency was added. It must not escape into App's
+    // effect, where there is no error boundary above it.
+    // Once: clearAllMocks resets calls but keeps implementations, so a
+    // persistent throw here would break every later test.
+    mockConfigure.mockImplementationOnce(() => {
+      throw new Error("react-native-purchases native module not found");
+    });
+
+    expect(configurePurchases("test_abc", false)).toBe(false);
+    expect(isConfigured()).toBe(false);
+  });
+
+  it("survives a rejected setLogLevel", () => {
+    mockSetLogLevel.mockReturnValueOnce(Promise.reject(new Error("no native module")));
+
+    expect(configurePurchases("test_abc", true)).toBe(true);
+  });
+
   it("enables debug logging only when asked", () => {
     configurePurchases("test_abc", false);
     expect(mockSetLogLevel).not.toHaveBeenCalled();
@@ -99,6 +119,13 @@ describe("getCurrentOffering", () => {
 
     await expect(getCurrentOffering()).resolves.toBeNull();
   });
+
+  it("returns null when there is no current offering", async () => {
+    mockGetOfferings.mockResolvedValue({});
+    configurePurchases("test_abc", false);
+
+    await expect(getCurrentOffering()).resolves.toBeNull();
+  });
 });
 
 describe("purchaseTip", () => {
@@ -123,6 +150,15 @@ describe("purchaseTip", () => {
 
   it("reports a failure", async () => {
     mockPurchasePackage.mockRejectedValue({ code: "2" });
+
+    await expect(purchaseTip(pkg)).resolves.toBe("failed");
+  });
+
+  it("reports a failure when the SDK was never configured", async () => {
+    // purchaseTip has no `configured` guard: the SDK's own throwIfNotConfigured
+    // rejects, and that classifies as a failure. Documented rather than relied
+    // on silently.
+    mockPurchasePackage.mockRejectedValue(new Error("There is no singleton instance"));
 
     await expect(purchaseTip(pkg)).resolves.toBe("failed");
   });

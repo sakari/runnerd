@@ -59,6 +59,17 @@ describe("supporterState", () => {
 
     expect(supporterState(info)).toEqual({ kind: "supporter", since: null });
   });
+
+  it("is supporter with a null date for a non-string purchase date", () => {
+    // new Date(null) is epoch 0, not Invalid Date — it would read "January 1970".
+    for (const raw of [null, undefined, 0]) {
+      const info = customerInfo({
+        [SUPPORTER_ENTITLEMENT]: { originalPurchaseDate: raw },
+      } as never);
+
+      expect(supporterState(info)).toEqual({ kind: "supporter", since: null });
+    }
+  });
 });
 
 describe("formatSupporterSince", () => {
@@ -180,8 +191,12 @@ describe("API key handling", () => {
   });
 
   it("keeps the committed key out of production builds", () => {
-    // The committed key is a Test Store key (or unset). Either way it must not
-    // be usable as a production key.
-    expect(() => productionApiKey(REVENUECAT_TEST_KEY)).toThrow();
+    // The committed key must be either unset or a Test Store key — never a
+    // real store key. Asserting the message keeps this honest about which
+    // branch it actually exercises.
+    expect(REVENUECAT_TEST_KEY === "" || isTestStoreKey(REVENUECAT_TEST_KEY)).toBe(true);
+    expect(() => productionApiKey(REVENUECAT_TEST_KEY)).toThrow(
+      REVENUECAT_TEST_KEY === "" ? /Missing/ : /Test Store key/,
+    );
   });
 });

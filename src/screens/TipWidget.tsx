@@ -11,11 +11,15 @@ import {
 } from "../core/tips";
 import {
   getCurrentOffering,
+  isConfigured,
   onCustomerInfoChange,
   purchaseTip,
   refreshCustomerInfo,
   restoreTip,
 } from "../platform/purchases";
+
+const MAX_LOAD_ATTEMPTS = 5;
+const RETRY_DELAY_MS = 2000;
 
 /**
  * Tracks supporter status. Starts at `unknown` so neither the tip button nor
@@ -27,12 +31,30 @@ function useSupporter(): [SupporterState, (info: CustomerInfo | null) => void] {
 
   useEffect(() => {
     let cancelled = false;
-    refreshCustomerInfo().then((next) => {
-      if (!cancelled && next) setInfo(next);
-    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+
+    // A single failed lookup would otherwise hide the widget for the whole
+    // session: the listener below never replays current state, so nothing else
+    // would ever populate it. Retry a bounded number of times, and not at all
+    // when there is no API key — that case is meant to stay hidden.
+    const load = () => {
+      refreshCustomerInfo().then((next) => {
+        if (cancelled) return;
+        if (next) {
+          setInfo(next);
+          return;
+        }
+        if (!isConfigured() || ++attempts >= MAX_LOAD_ATTEMPTS) return;
+        timer = setTimeout(load, RETRY_DELAY_MS * attempts);
+      });
+    };
+
+    load();
     const unsubscribe = onCustomerInfoChange((next) => setInfo(next));
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       unsubscribe();
     };
   }, []);
@@ -44,31 +66,32 @@ export default function TipWidget() {
   const [state, setInfo] = useSupporter();
   const [open, setOpen] = useState(false);
 
-  if (state.kind === "unknown") return null;
-
-  if (state.kind === "supporter") {
-    return (
-      <View style={styles.badge} testID="tip-supporter">
-        <Ionicons name="heart" size={16} color="#1a1" />
-        <Text style={styles.badgeText}>
-          {state.since ? `Supporter since ${formatSupporterSince(state.since)}` : "Supporter"}
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <>
-      <Pressable
-        style={styles.headerButton}
-        testID="tip-open"
-        accessibilityLabel="Support Runnerd"
-        onPress={() => setOpen(true)}
-      >
-        <Ionicons name="heart-outline" size={20} color="#fff" />
-      </Pressable>
-      {/* Mounted only while open, so each visit starts from a clean state
-          without resetting anything from an effect. */}
+      {state.kind === "supporter" ? (
+        <View style={styles.badge} testID="tip-supporter">
+          <Ionicons name="heart" size={16} color="#1a1" />
+          <Text style={styles.badgeText}>
+            {state.since ? `Supporter since ${formatSupporterSince(state.since)}` : "Supporter"}
+          </Text>
+        </View>
+      ) : state.kind === "none" ? (
+        <Pressable
+          style={styles.headerButton}
+          testID="tip-open"
+          accessibilityLabel="Support Runnerd"
+          onPress={() => setOpen(true)}
+        >
+          <Ionicons name="heart-outline" size={20} color="#fff" />
+        </Pressable>
+      ) : null}
+
+      {/* Rendered outside the state switch on purpose. When it lived inside the
+          "none" branch, a purchase flipping the state to "supporter" unmounted
+          the sheet mid-flow — discarding the "Thank you" state entirely if the
+          CustomerInfo listener won the race with purchaseTip, and otherwise
+          self-dismissing the sheet the user never closed. Its lifetime is now
+          governed only by `open`. */}
       {open ? <TipModal onClose={() => setOpen(false)} onCustomerInfo={setInfo} /> : null}
     </>
   );
@@ -86,6 +109,7 @@ function TipModal({
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<TipOutcome | null>(null);
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -102,12 +126,17 @@ function TipModal({
 
   const retry = useCallback(() => {
     setLoading(true);
+    setOutcome(null);
+    setRestoreMessage(null);
     setAttempt((n) => n + 1);
   }, []);
 
   const handleTip = async () => {
     if (!pkg) return;
     setBusy(true);
+    // Clear the other channel's message, or the sheet shows a stale restore
+    // result alongside a fresh purchase result.
+    setRestoreMessage(null);
     const result = await purchaseTip(pkg);
     setOutcome(result);
     if (result === "thanks") {
@@ -123,10 +152,12 @@ function TipModal({
   const handleRestore = async () => {
     setBusy(true);
     setRestoreMessage(null);
+    setOutcome(null);
     const info = await restoreTip();
     if (!info) {
       setRestoreMessage("Couldn't reach the store. Try again in a moment.");
     } else if (supporterState(info).kind === "supporter") {
+      setRestored(true);
       onCustomerInfo(info);
     } else {
       // Never a silent no-op: a restore that finds nothing has to say so.
@@ -146,9 +177,9 @@ function TipModal({
             doesn&apos;t unlock anything.
           </Text>
 
-          {outcome === "thanks" ? (
+          {outcome === "thanks" || restored ? (
             <Text style={styles.thanks} testID="tip-thanks">
-              Thank you! ♥
+              {restored ? "Tip restored — thank you! ♥" : "Thank you! ♥"}
             </Text>
           ) : (
             <>
@@ -156,9 +187,9 @@ function TipModal({
                 <ActivityIndicator color="#1a1" style={styles.loader} />
               ) : pkg ? (
                 <Pressable
-                  style={[styles.tipButton, busy && styles.disabled]}
+                  style={[styles.tipButton, (busy || outcome === "pending") && styles.disabled]}
                   testID="tip-confirm"
-                  disabled={busy}
+                  disabled={busy || outcome === "pending"}
                   onPress={handleTip}
                 >
                   <Text style={styles.tipButtonText}>Tip {pkg.product.priceString}</Text>
@@ -190,9 +221,11 @@ function TipModal({
             </>
           )}
 
-          <Pressable onPress={handleRestore} disabled={busy} testID="tip-restore">
-            <Text style={styles.link}>Restore purchases</Text>
-          </Pressable>
+          {outcome === "thanks" || restored ? null : (
+            <Pressable onPress={handleRestore} disabled={busy} testID="tip-restore">
+              <Text style={styles.link}>Restore purchases</Text>
+            </Pressable>
+          )}
           {restoreMessage ? (
             <Text style={styles.note} testID="tip-restore-message">
               {restoreMessage}

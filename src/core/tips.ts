@@ -77,7 +77,10 @@ export function supporterState(info: CustomerInfo | null): SupporterState {
   const entitlement = info.entitlements.active[SUPPORTER_ENTITLEMENT];
   if (!entitlement) return { kind: "none" };
 
-  const parsed = new Date(entitlement.originalPurchaseDate);
+  // `new Date(null)` is epoch 0, not Invalid Date, so a null from the bridge
+  // would render "Supporter since January 1970" rather than falling back.
+  const raw = entitlement.originalPurchaseDate;
+  const parsed = typeof raw === "string" ? new Date(raw) : new Date(NaN);
   const since = isNaN(parsed.getTime()) ? null : parsed;
   return { kind: "supporter", since };
 }
