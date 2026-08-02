@@ -15,7 +15,7 @@ what changing it costs.
 |---|---|---|
 | What a tip grants | **A permanent `supporter` entitlement.** Once tipped, the tip widget is replaced by a thank-you state, for good. | — this is now the requirement, not an assumption. |
 | Product type | **Non-consumable** (one-time, restorable). On the Test Store it's simply a non-subscription product; the consumable/non-consumable split only becomes real when App Store Connect products exist. | Low now, higher once real products are live — the type is fixed at product creation in App Store Connect. |
-| Number of tiers | **Rendered from the offering**, so RevenueCat decides how many and at what price. | None — that's the point of rendering from `getOfferings()`. |
+| Tip amount | **One product at roughly €1 / $1.** A single package in the `default` offering; no tiers. | Low — adding tiers means adding products in the dashboard and mapping over `availablePackages` instead of taking the first. |
 | Post-tip display | **"Supporter since <month year>"**, read from the entitlement's `originalPurchaseDate`. | None — it's one string. |
 | Where the UI lives | **Heart icon in the History screen header**, opening a modal. | Low. Moving it to a new About tab is a `App.tsx` navigator change plus a screen; the modal itself is reusable as-is. |
 
@@ -37,6 +37,14 @@ grants-nothing tip would have avoided, and they drive most of what follows:
 local storage at all — no SQLite column, no `AsyncStorage` flag. RevenueCat's
 cached `CustomerInfo` is the single source of truth and survives app restarts
 offline.
+
+**One amount does not mean a hardcoded price string.** "€1" is what it costs
+in the eurozone; Apple and Google map a price tier to their own local amount
+per storefront, so the same product is $0.99, £0.99, ¥160 and so on. The UI
+must render `pkg.product.priceString` from the offering — already localized
+and currency-formatted by the store — and never a literal. The offering is
+still worth fetching for exactly this reason, plus it keeps the product
+swappable server-side.
 
 **Explicit non-goals:** real money, App Store Connect products, Android, the
 `appl_`/`goog_` production keys, subscriptions, and paywall UI from
@@ -68,20 +76,14 @@ No code. Roughly 10 minutes.
 2. **Apps & providers** → confirm **Test Store** is enabled. Do not connect
    App Store or Play Store — neither is needed and both require credentials
    we don't have.
-3. Replace the auto-provisioned products with three **non-subscription** tip
-   products, e.g. `tip_small` / `tip_medium` / `tip_large`.
-4. Put them in the `default` offering as three packages, cheapest first.
-5. Create a `supporter` entitlement and **attach all three products to it**.
-   The unlock-forever behaviour of non-subscription products — no expiration
-   date to fall off — is exactly what's wanted here: any one tip grants
-   `supporter` permanently.
+3. Replace the auto-provisioned products with a single **non-subscription**
+   product, `tip`, priced at the ~€1 / $1 tier.
+4. Put it in the `default` offering as one package.
+5. Create a `supporter` entitlement and **attach `tip` to it**. The
+   unlock-forever behaviour of non-subscription products — no expiration date
+   to fall off — is exactly what's wanted here: the tip grants `supporter`
+   permanently.
 6. Copy the `test_` SDK key from **API keys**.
-
-One consequence of tiers plus a single entitlement: after buying `tip_small`,
-the store still considers `tip_large` purchasable, but our UI has already
-switched to the thank-you state and never offers it again. That's coherent —
-you pick your amount once — but it means the offering is only ever shown to
-non-supporters.
 
 ## 3. Code
 
@@ -110,12 +112,6 @@ import type {
 
 export const SUPPORTER = "supporter";
 
-export interface TipOption {
-  id: string;
-  priceString: string;
-  pkg: PurchasesPackage;
-}
-
 export type TipOutcome = "thanks" | "cancelled" | "pending" | "failed";
 
 /** The widget's three states. `unknown` renders neither button nor badge. */
@@ -126,7 +122,8 @@ export type SupporterState =
 
 export function supporterState(info: CustomerInfo | null): SupporterState;
 export function formatSupporterSince(since: Date): string;
-export function toTipOptions(packages: PurchasesPackage[]): TipOption[];
+/** The single tip package, or null if the offering is empty/unavailable. */
+export function tipPackage(offering: PurchasesOffering | null): PurchasesPackage | null;
 export function classifyPurchaseError(e: PurchasesError): TipOutcome;
 export function isTestStoreKey(key: string): boolean;
 ```
@@ -138,10 +135,13 @@ the widget renders from. It reads
 user tipped / since when" question is answered by one tested function against
 fixture objects, with no native module and no device.
 
-`toTipOptions` sorts by price ascending. `classifyPurchaseError` keeps every
-`try/catch` decision out of the screen — note `code` is a
-`PURCHASES_ERROR_CODE` and the older `userCancelled` field is deprecated in
-favour of `code === PURCHASE_CANCELLED_ERROR`.
+`tipPackage` takes the first available package and returns `null` for an empty
+or missing offering, so "the store didn't load" is a normal, tested value
+rather than an exception at the call site.
+
+`classifyPurchaseError` keeps every `try/catch` decision out of the screen —
+note `code` is a `PURCHASES_ERROR_CODE` and the older `userCancelled` field is
+deprecated in favour of `code === PURCHASE_CANCELLED_ERROR`.
 
 ### 3.3 `src/platform/purchases.ts` — thin shim, mocked in tests
 
@@ -149,7 +149,7 @@ favour of `code === PURCHASE_CANCELLED_ERROR`.
 import Purchases, { LOG_LEVEL } from "react-native-purchases";
 
 export function configurePurchases(apiKey: string, debug: boolean): void;
-export async function getTipPackages(): Promise<PurchasesPackage[]>;
+export async function getCurrentOffering(): Promise<PurchasesOffering | null>;
 export async function purchaseTip(pkg: PurchasesPackage): Promise<TipOutcome>;
 export async function refreshCustomerInfo(): Promise<CustomerInfo>;
 export async function restoreTip(): Promise<CustomerInfo>;
@@ -189,9 +189,16 @@ exists.
 
 ### 3.5 UI
 
-- `src/screens/TipModal.tsx` — lists `TipOption`s, one button each, thank-you
-  and error states driven by `TipOutcome`. Also hosts the **Restore purchases**
-  link (small, secondary — it exists for reinstalls and for Apple).
+- `src/screens/TipModal.tsx` — a short blurb, one **Tip `{priceString}`**
+  button (the price comes from the package, never a literal), thank-you and
+  error states driven by `TipOutcome`, and a small secondary **Restore
+  purchases** link. When `tipPackage()` returns `null` — offline, or the
+  offering failed to load — the button is replaced by a "couldn't reach the
+  store" line with a retry, which is why that case is a value and not a throw.
+
+  The confirm step is deliberate: a heart tap that goes straight to a payment
+  sheet reads as a dark pattern, and with one fixed amount the modal is small
+  enough that it costs nothing.
 - `src/screens/HistoryScreen.tsx` — the widget in the header, rendering from
   `SupporterState`:
   - `unknown` → render nothing (no placeholder, no spinner — it resolves in
@@ -214,7 +221,8 @@ Detail in [`revenuecat.md` §5](./revenuecat.md). Concretely:
 
 - `src/core/tips.test.ts` — every branch of `supporterState` (null info,
   no entitlement, active entitlement with a date), `formatSupporterSince`,
-  sorting, and every branch of `classifyPurchaseError`. No mocks.
+  `tipPackage` (populated / empty / null offering), and every branch of
+  `classifyPurchaseError`. No mocks.
 - `src/platform/purchases.test.ts` — `configure` called once, debug logging
   only in dev, `purchaseTip` mapping success/cancel/failure, `restoreTip`
   delegating to `restorePurchases`, and the `test_` guard.
@@ -234,8 +242,7 @@ appId: com.runnerd.app
 - tapOn:
     id: "tip-open"
 - tapOn:
-    index: 0
-    id: "tip-option"
+    id: "tip-confirm"
 - tapOn: "Simulate purchase"
 - assertVisible:
     id: "tip-supporter"
