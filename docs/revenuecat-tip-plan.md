@@ -13,16 +13,30 @@ what changing it costs.
 
 | Decision | Assumed | Cost to change later |
 |---|---|---|
-| What a tip grants | **Nothing** — a pure thank-you. Consumable product, attached to no entitlement. | Low. Adding a supporter badge means attaching the product to an entitlement in the dashboard and reading `customerInfo.entitlements.active` — the core/platform split below already isolates this. It also adds a mandatory Restore Purchases affordance. |
-| Number of tiers | **Rendered from the offering**, so RevenueCat decides how many and at what price. Starts as the three auto-provisioned products. | None — that's the point of rendering from `getOfferings()`. |
+| What a tip grants | **A permanent `supporter` entitlement.** Once tipped, the tip widget is replaced by a thank-you state, for good. | — this is now the requirement, not an assumption. |
+| Product type | **Non-consumable** (one-time, restorable). On the Test Store it's simply a non-subscription product; the consumable/non-consumable split only becomes real when App Store Connect products exist. | Low now, higher once real products are live — the type is fixed at product creation in App Store Connect. |
+| Number of tiers | **Rendered from the offering**, so RevenueCat decides how many and at what price. | None — that's the point of rendering from `getOfferings()`. |
+| Post-tip display | **"Supporter since <month year>"**, read from the entitlement's `originalPurchaseDate`. | None — it's one string. |
 | Where the UI lives | **Heart icon in the History screen header**, opening a modal. | Low. Moving it to a new About tab is a `App.tsx` navigator change plus a screen; the modal itself is reusable as-is. |
 
-The "grants nothing" choice is the important one, and it is deliberately the
-smallest thing that works: no entitlement means no restore flow, no persisted
-purchase state, no entitlement threading through the UI, and no App Store
-review surface around restoring. If the tip should leave a permanent mark,
-say so before step 3 — it changes the product type question from "consumable"
-to "consumable *and* entitlement", not the architecture.
+Making the tip permanently change the UI has three consequences that a
+grants-nothing tip would have avoided, and they drive most of what follows:
+
+1. **The purchase must be one-time, so it's a non-consumable.** A consumable
+   is designed to be bought repeatedly; if tipping disables the widget, buying
+   twice is impossible by construction.
+2. **Restore Purchases becomes mandatory.** Apple requires a restore
+   affordance for non-consumables (guideline 3.1.1), and it's needed in
+   practice regardless — see the anonymous-ID risk in §6.
+3. **The UI now has three states, not two** — supporter, not-supporter, and
+   *unknown* while `CustomerInfo` is still loading. Rendering "unknown" as
+   "not-supporter" makes the widget flicker into existence for people who
+   already paid, which is the worst of the three failure modes.
+
+`originalPurchaseDate` on the entitlement means "supporter since" needs no
+local storage at all — no SQLite column, no `AsyncStorage` flag. RevenueCat's
+cached `CustomerInfo` is the single source of truth and survives app restarts
+offline.
 
 **Explicit non-goals:** real money, App Store Connect products, Android, the
 `appl_`/`goog_` production keys, subscriptions, and paywall UI from
@@ -54,14 +68,20 @@ No code. Roughly 10 minutes.
 2. **Apps & providers** → confirm **Test Store** is enabled. Do not connect
    App Store or Play Store — neither is needed and both require credentials
    we don't have.
-3. Replace the auto-provisioned products with three **non-subscription**
-   (consumable) tip products, e.g. `tip_small` / `tip_medium` / `tip_large`.
+3. Replace the auto-provisioned products with three **non-subscription** tip
+   products, e.g. `tip_small` / `tip_medium` / `tip_large`.
 4. Put them in the `default` offering as three packages, cheapest first.
-5. **Detach them from every entitlement.** This is the step that's easy to get
-   wrong: a consumable attached to an entitlement unlocks it *forever*, since
-   there's no expiration date to fall off. A tip that grants nothing must
-   belong to no entitlement.
+5. Create a `supporter` entitlement and **attach all three products to it**.
+   The unlock-forever behaviour of non-subscription products — no expiration
+   date to fall off — is exactly what's wanted here: any one tip grants
+   `supporter` permanently.
 6. Copy the `test_` SDK key from **API keys**.
+
+One consequence of tiers plus a single entitlement: after buying `tip_small`,
+the store still considers `tip_large` purchasable, but our UI has already
+switched to the thank-you state and never offers it again. That's coherent —
+you pick your amount once — but it means the offering is only ever shown to
+non-supporters.
 
 ## 3. Code
 
@@ -82,7 +102,13 @@ Uses a **type-only** import, so vitest never loads the native module and this
 file needs no mocks at all (verified against this project's vitest 4.1.2).
 
 ```ts
-import type { PurchasesPackage, PurchasesError } from "react-native-purchases";
+import type {
+  CustomerInfo,
+  PurchasesPackage,
+  PurchasesError,
+} from "react-native-purchases";
+
+export const SUPPORTER = "supporter";
 
 export interface TipOption {
   id: string;
@@ -92,15 +118,30 @@ export interface TipOption {
 
 export type TipOutcome = "thanks" | "cancelled" | "pending" | "failed";
 
+/** The widget's three states. `unknown` renders neither button nor badge. */
+export type SupporterState =
+  | { kind: "unknown" }
+  | { kind: "none" }
+  | { kind: "supporter"; since: Date };
+
+export function supporterState(info: CustomerInfo | null): SupporterState;
+export function formatSupporterSince(since: Date): string;
 export function toTipOptions(packages: PurchasesPackage[]): TipOption[];
 export function classifyPurchaseError(e: PurchasesError): TipOutcome;
 export function isTestStoreKey(key: string): boolean;
 ```
 
-`toTipOptions` sorts by price ascending and maps to what the modal renders.
-`classifyPurchaseError` keeps every `try/catch` decision out of the screen —
-note `code` is a `PURCHASES_ERROR_CODE` and the older `userCancelled` field is
-deprecated in favour of `code === PURCHASE_CANCELLED_ERROR`.
+`supporterState` is the heart of it, and it's pure — it takes a plain
+`CustomerInfo` (or `null` while loading) and returns the discriminated union
+the widget renders from. It reads
+`info.entitlements.active[SUPPORTER].originalPurchaseDate`, so every "has the
+user tipped / since when" question is answered by one tested function against
+fixture objects, with no native module and no device.
+
+`toTipOptions` sorts by price ascending. `classifyPurchaseError` keeps every
+`try/catch` decision out of the screen — note `code` is a
+`PURCHASES_ERROR_CODE` and the older `userCancelled` field is deprecated in
+favour of `code === PURCHASE_CANCELLED_ERROR`.
 
 ### 3.3 `src/platform/purchases.ts` — thin shim, mocked in tests
 
@@ -110,7 +151,15 @@ import Purchases, { LOG_LEVEL } from "react-native-purchases";
 export function configurePurchases(apiKey: string, debug: boolean): void;
 export async function getTipPackages(): Promise<PurchasesPackage[]>;
 export async function purchaseTip(pkg: PurchasesPackage): Promise<TipOutcome>;
+export async function refreshCustomerInfo(): Promise<CustomerInfo>;
+export async function restoreTip(): Promise<CustomerInfo>;
+export function onCustomerInfoChange(cb: (info: CustomerInfo) => void): void;
 ```
+
+`onCustomerInfoChange` wraps `Purchases.addCustomerInfoUpdateListener`, which
+fires on purchase, on restore, and on cross-device sync. Feeding the widget
+from that listener rather than from `purchaseTip`'s return value means the
+supporter state has exactly one source, and restore updates the UI for free.
 
 The key is a **parameter**, not read from `Platform.select` inside the module.
 That is deliberate: no `src/**/*.ts` file currently imports `react-native`, and
@@ -141,26 +190,37 @@ exists.
 ### 3.5 UI
 
 - `src/screens/TipModal.tsx` — lists `TipOption`s, one button each, thank-you
-  and error states driven by `TipOutcome`.
-- `src/screens/HistoryScreen.tsx` — a heart `Ionicons` button in the header
-  (the screen already imports `Ionicons` and `Modal`), plus
-  `testID="tip-open"` and `testID="tip-thanks"` for Maestro.
-- `App.tsx` — call `configurePurchases(...)` in the existing `useEffect`
-  alongside `setupNotificationHandler()`.
+  and error states driven by `TipOutcome`. Also hosts the **Restore purchases**
+  link (small, secondary — it exists for reinstalls and for Apple).
+- `src/screens/HistoryScreen.tsx` — the widget in the header, rendering from
+  `SupporterState`:
+  - `unknown` → render nothing (no placeholder, no spinner — it resolves in
+    milliseconds from cache, and an empty slot beats a flicker);
+  - `none` → heart `Ionicons` button, `testID="tip-open"`, opens the modal;
+  - `supporter` → a non-interactive filled heart with "Supporter since March
+    2026", `testID="tip-supporter"`. No tap target — this is the "disable the
+    widget" half of the requirement.
 
-Since a tip grants nothing, there is no persisted state, no entitlement check
-on launch, and no Restore Purchases button.
+  The screen already imports `Ionicons` and `Modal`, so this adds no new deps.
+- `App.tsx` — `configurePurchases(...)` in the existing `useEffect` alongside
+  `setupNotificationHandler()`.
+- Supporter state lives in a small `useSupporter()` hook (a `.tsx` or a
+  context) seeded by `refreshCustomerInfo()` on mount and kept current by
+  `onCustomerInfoChange`. It starts at `{ kind: "unknown" }`.
 
 ## 4. Testing
 
 Detail in [`revenuecat.md` §5](./revenuecat.md). Concretely:
 
-- `src/core/tips.test.ts` — sorting, price formatting, and every branch of
-  `classifyPurchaseError`. No mocks.
+- `src/core/tips.test.ts` — every branch of `supporterState` (null info,
+  no entitlement, active entitlement with a date), `formatSupporterSince`,
+  sorting, and every branch of `classifyPurchaseError`. No mocks.
 - `src/platform/purchases.test.ts` — `configure` called once, debug logging
-  only in dev, `purchaseTip` mapping success/cancel/failure, and the `test_`
-  guard.
-- `e2e/tip.yaml` — Maestro against the Test Store's deterministic modal:
+  only in dev, `purchaseTip` mapping success/cancel/failure, `restoreTip`
+  delegating to `restorePurchases`, and the `test_` guard.
+- `e2e/tip.yaml` — Maestro against the Test Store's deterministic modal. The
+  assertion that matters is the **transition**: the button is gone and the
+  badge is present.
 
 ```yaml
 appId: com.runnerd.app
@@ -169,6 +229,8 @@ appId: com.runnerd.app
     clearState: true
 - tapOn:
     id: "tab-history"
+- assertVisible:
+    id: "tip-open"
 - tapOn:
     id: "tip-open"
 - tapOn:
@@ -176,15 +238,24 @@ appId: com.runnerd.app
     id: "tip-option"
 - tapOn: "Simulate purchase"
 - assertVisible:
-    id: "tip-thanks"
+    id: "tip-supporter"
+- assertNotVisible:
+    id: "tip-open"
 ```
 
-`clearState: true` matters even here: it forces a fresh anonymous app user ID
-per run so purchases don't accumulate across CI runs.
+`clearState: true` is load-bearing now, not just hygiene: without it the
+second CI run starts already-a-supporter, `tip-open` never renders, and the
+flow fails on the first `assertVisible` — or worse, a badly written flow
+passes for the wrong reason.
 
-`Simulate failure` and `Cancel` get their own flows — those branches are
-near-impossible to trigger reliably against a real store, and here they're a
-tap.
+A second flow should relaunch **without** `clearState` after a successful tip
+and assert `tip-supporter` is still visible. That's the persistence guarantee
+the feature actually promises, and it's the one thing unit tests can't reach.
+
+`Simulate failure` and `Cancel` get their own flows, each asserting the widget
+stayed in the `tip-open` state — the negative case matters as much as the
+positive one here, since a failed purchase that disables the widget would be
+worse than one that errors loudly.
 
 **CI impact.** `.github/workflows/e2e-ios.yml` already builds a Release
 simulator app on `macos-15` and runs `e2e/`, and the Test Store explicitly
@@ -204,16 +275,28 @@ it — the total diff is small.
    `src/platform/purchases.ts`, both test files, `configurePurchases()` wired
    into `App.tsx`, and the `docs/privacy-policy.html` rewrite (sections 2, 3,
    4, 7 + date bump). No user-visible change yet.
-2. **Tip UI.** `TipModal.tsx`, the History header button, test IDs.
-3. **E2E.** `e2e/tip.yaml` for the success, cancel, and failure flows.
+2. **Tip UI.** `TipModal.tsx` (including Restore purchases), the
+   `useSupporter()` hook, the three-state History header widget, test IDs.
+3. **E2E.** `e2e/tip.yaml` for the success, persistence-across-relaunch,
+   cancel, and failure flows.
 
 A README note on needing a dev build for tip work belongs in PR 1 or 2.
 
 ## 6. Risks
 
-- **Consumable attached to an entitlement by accident** — silently grants
-  forever. Guarded by step 2.5 above; worth re-checking in the dashboard after
-  the first successful test purchase.
+- **Anonymous app user IDs don't survive reinstall.** Without a login system,
+  RevenueCat generates an anonymous ID stored on the device. Delete the app,
+  reinstall, and the user is no longer a supporter until they tap **Restore
+  purchases** — which is why that link isn't optional, independently of
+  Apple's rule. Restore works because the purchase is tied to their store
+  account; nothing more is needed. Worth a line of copy in the modal so it
+  isn't experienced as "I paid and it forgot me".
+- **Flicker on cold start.** If `unknown` is rendered as `none`, a supporter
+  sees the tip button for a moment on every launch. The three-state union
+  exists specifically to prevent this; it's the first thing to check by hand.
+- **Entitlement misconfiguration.** Forgetting to attach the products to
+  `supporter` means purchases succeed and the widget never changes — a silent,
+  confusing failure. Verify in the dashboard after the first test purchase.
 - **Expo Go divergence.** Preview API Mode means the tip button appears to do
   nothing in Expo Go rather than failing loudly. Worth an explicit "requires a
   dev build" note so it isn't debugged as a bug.
