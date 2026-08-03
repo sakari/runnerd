@@ -2,10 +2,10 @@ appId: com.runnerd.app
 
 # Tip jar, exercised against the RevenueCat Test Store.
 #
-# The whole flow is guarded on `tip-open` being visible. While
-# REVENUECAT_TEST_KEY in src/core/tips.ts is empty the SDK is never configured,
-# the tip widget renders nothing, and everything below is SKIPPED — this file
-# passes without testing anything. Fill the key in to make it real.
+# Unconditional: REVENUECAT_TEST_KEY is set, so a missing tip button is a real
+# failure rather than a reason to skip. Requires the dashboard to have a
+# non-subscription product in the `default` offering, attached to the
+# `supporter` entitlement.
 ---
 - launchApp:
     clearState: true
@@ -16,77 +16,62 @@ appId: com.runnerd.app
 - tapOn:
     id: "tab-history"
 
+# The widget only renders once CustomerInfo resolves, so this is also the
+# assertion that the SDK configured and reached RevenueCat at all.
+- assertVisible:
+    id: "tip-open"
+
 # Cancelling must leave the widget exactly as it was.
-- runFlow:
-    when:
-      visible:
-        id: "tip-open"
-    commands:
-      - tapOn:
-          id: "tip-open"
-      - assertVisible:
-          id: "tip-confirm"
-      - tapOn:
-          id: "tip-confirm"
-      - tapOn: "Cancel"
-      - tapOn:
-          id: "tip-close"
-      - assertVisible:
-          id: "tip-open"
-      - assertNotVisible:
-          id: "tip-supporter"
+- tapOn:
+    id: "tip-open"
+- assertVisible:
+    id: "tip-confirm"
+- tapOn:
+    id: "tip-confirm"
+- tapOn: "Cancel"
+- tapOn:
+    id: "tip-close"
+- assertVisible:
+    id: "tip-open"
+- assertNotVisible:
+    id: "tip-supporter"
 
 # A failed purchase must report itself and leave the widget tappable.
-- runFlow:
-    when:
-      visible:
-        id: "tip-open"
-    commands:
-      - tapOn:
-          id: "tip-open"
-      - tapOn:
-          id: "tip-confirm"
-      - tapOn: "Simulate failure"
-      - assertVisible:
-          id: "tip-failed"
-      - tapOn:
-          id: "tip-close"
-      - assertVisible:
-          id: "tip-open"
-      - assertNotVisible:
-          id: "tip-supporter"
+- tapOn:
+    id: "tip-open"
+- tapOn:
+    id: "tip-confirm"
+- tapOn: "Simulate failure"
+- assertVisible:
+    id: "tip-failed"
+- tapOn:
+    id: "tip-close"
+- assertVisible:
+    id: "tip-open"
+- assertNotVisible:
+    id: "tip-supporter"
 
 # A successful tip swaps the button for the badge, permanently.
-- runFlow:
-    when:
-      visible:
-        id: "tip-open"
-    commands:
-      - tapOn:
-          id: "tip-open"
-      - tapOn:
-          id: "tip-confirm"
-      - tapOn: "Simulate purchase"
-      - assertVisible:
-          id: "tip-thanks"
-      - tapOn:
-          id: "tip-close"
-      - assertVisible:
-          id: "tip-supporter"
-      - assertNotVisible:
-          id: "tip-open"
+- tapOn:
+    id: "tip-open"
+- tapOn:
+    id: "tip-confirm"
+- tapOn: "Simulate purchase"
+- assertVisible:
+    id: "tip-thanks"
+- tapOn:
+    id: "tip-close"
+- assertVisible:
+    id: "tip-supporter"
+- assertNotVisible:
+    id: "tip-open"
 
 # Relaunch WITHOUT clearState: supporter status must survive a restart.
-- runFlow:
-    when:
-      visible:
-        id: "tip-supporter"
-    commands:
-      - launchApp:
-          clearState: false
-      - tapOn:
-          id: "tab-history"
-      - assertVisible:
-          id: "tip-supporter"
-      - assertNotVisible:
-          id: "tip-open"
+- launchApp:
+    clearState: false
+- tapOn:
+    id: "tab-history"
+- assertVisible:
+    id: "tip-supporter"
+- assertNotVisible:
+    id: "tip-open"

@@ -15,10 +15,9 @@ export const SUPPORTER_ENTITLEMENT = "supporter";
  * reaching a production build, where it would silently replace the payment
  * sheet with the simulator. `productionApiKey` below is that guard.
  *
- * Paste the `test_...` key from the RevenueCat dashboard here. While it is
- * empty the SDK is never configured and the tip UI stays hidden.
+ * While this is empty the SDK is never configured and the tip UI stays hidden.
  */
-export const REVENUECAT_TEST_KEY = "";
+export const REVENUECAT_TEST_KEY = "test_WIuLRrqMyXrYoDHArPPdoWAjbnX";
 
 /** Outcome of a tip attempt, as the UI needs to render it. */
 export type TipOutcome = "thanks" | "cancelled" | "pending" | "failed";

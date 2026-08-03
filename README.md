@@ -49,17 +49,16 @@ Runnerd has an optional one-off tip that unlocks nothing and shows a
 Store**, so it needs no paid Apple Developer account and no App Store Connect
 products.
 
-**It is inert until a key is set.** `REVENUECAT_TEST_KEY` in
-`src/core/tips.ts` is empty, so the SDK is never configured, the tip widget
-renders nothing, and `e2e/tip.yaml` skips its whole body. To turn it on:
+The Test Store key is committed in `REVENUECAT_TEST_KEY`
+(`src/core/tips.ts`). It is a public client key that ships inside the app
+binary either way, so committing it is not a leak — see
+`docs/revenuecat-tip-plan.md` for the reasoning and for the guard that stops a
+`test_` key reaching a production build. Setting it to `""` disables the
+feature entirely: the SDK is never configured and the widget renders nothing.
 
-1. In the RevenueCat dashboard, enable the Test Store, create one
-   non-subscription product priced at roughly EUR 1, put it in the `default`
-   offering, and attach it to a `supporter` entitlement.
-2. Paste the `test_…` key into `REVENUECAT_TEST_KEY`. It is a public client
-   key that ships in the app binary either way, so committing it is fine — see
-   `docs/revenuecat-tip-plan.md` for why, and for the guard that stops it
-   reaching a production build.
+The dashboard needs a non-subscription product priced at roughly EUR 1, in the
+`default` offering, attached to a `supporter` entitlement. `e2e/tip.yaml`
+asserts against that setup unconditionally.
 
 The tip path needs a native build (`pnpm ios` or `pnpm ios:release`). In Expo
 Go the SDK falls back to Preview API Mode and the tip button silently does

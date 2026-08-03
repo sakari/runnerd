@@ -10,14 +10,14 @@ Implementation plan. Background research is in [`revenuecat.md`](./revenuecat.md
 > - **`expo-dev-client` was not installed.** The project already builds
 >   natively via `expo run:ios`, which is all the SDK needs; the dev client
 >   only adds a launcher UI.
-> - `REVENUECAT_TEST_KEY` ships **empty**, pending the dashboard setup in §2.
->   While empty the SDK is never configured and the tip widget renders nothing.
+> - `REVENUECAT_TEST_KEY` now holds a real Test Store key, so the feature is
+>   live. Setting it back to `""` disables it: the SDK is never configured and
+>   the widget renders nothing.
 > - The UI is one component, `src/screens/TipWidget.tsx` (hook + badge +
 >   modal), mounted as the History screen's `headerRight`. No context provider
 >   was needed — the widget is the only consumer of supporter state.
-> - `e2e/tip.yaml` guards every block on `tip-open` being visible, so it
->   **passes without testing anything** until the key is set. That is a real
->   gap, not a covered case.
+> - `e2e/tip.yaml` is unconditional now that the key is set — a missing tip
+>   button fails the run rather than skipping it.
 
 **Goal:** an optional "support Runnerd" tip, running entirely against the
 RevenueCat **Test Store** — no paid Apple Developer account, no App Store
