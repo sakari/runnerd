@@ -88,7 +88,12 @@ jobs:
           APP_PATH="build/Build/Products/Release-iphonesimulator/runnerd.app"
           ls -la "$APP_PATH"
           xcrun simctl install "iPhone 16" "$APP_PATH"
-          maestro test --format junit --output maestro-report.xml e2e/ 2>&1 | tee maestro-output.log
+          # smoke.yaml only, deliberately. This job builds -configuration
+          # Release, and RevenueCat's SDK refuses a Test Store key outside a
+          # debug build, so the tip UI is absent here by design. e2e/tip.yaml
+          # therefore cannot pass against this build and is NOT covered by CI —
+          # run it with `pnpm e2e:tip` against a debug build instead.
+          maestro test --format junit --output maestro-report.xml e2e/smoke.yaml 2>&1 | tee maestro-output.log
 
       - name: Emit failure details as annotations
         if: failure()

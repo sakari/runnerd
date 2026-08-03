@@ -60,9 +60,19 @@ The dashboard needs a non-subscription product priced at roughly EUR 1, in the
 `default` offering, attached to a `supporter` entitlement. `e2e/tip.yaml`
 asserts against that setup unconditionally.
 
-The tip path needs a native build (`pnpm ios` or `pnpm ios:release`). In Expo
-Go the SDK falls back to Preview API Mode and the tip button silently does
-nothing.
+**The tip only exists in debug builds.** RevenueCat's SDK deliberately alerts
+and crashes when a `test_` key is used in a Release build, so `apiKeyForBuild`
+withholds the key from non-debug builds: `pnpm ios:release` runs normally but
+shows no tip widget. Use `pnpm ios` (a debug build, tethered to Metro) to see
+or test it, and `pnpm e2e:tip` to run its Maestro flow against that build.
+`pnpm e2e` and CI cover `smoke.yaml` only, for the same reason.
+
+In Expo Go the SDK falls back to Preview API Mode and the tip button silently
+does nothing, so a native build is required either way.
+
+Making the tip work in an untethered on-device build needs an Xcode build
+configuration duplicated from Debug (so the RevenueCat pod keeps `DEBUG`) with
+JS bundling forced on — RevenueCat's own guidance. That is not set up here.
 
 ## Scripts
 

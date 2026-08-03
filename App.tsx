@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { setupNotificationHandler } from "./src/platform/time-notifications";
 import { configurePurchases } from "./src/platform/purchases";
-import { REVENUECAT_TEST_KEY, isTestStoreKey } from "./src/core/tips";
+import { REVENUECAT_TEST_KEY, apiKeyForBuild } from "./src/core/tips";
 import TimerScreen from "./src/screens/TimerScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 
@@ -16,11 +16,10 @@ export default function App() {
     // Only set up the handler at launch. Permission prompts are requested
     // in-context when the user first taps Start, per App Store guideline 5.1.1(ii).
     setupNotificationHandler();
-    // No-op if REVENUECAT_TEST_KEY is ever emptied, which hides the tip UI.
-    // Verbose SDK logging for a Test Store key even in a Release build: a
-    // `test_` key is never production, and release-on-device is exactly where
-    // the tip path needs to be debuggable.
-    configurePurchases(REVENUECAT_TEST_KEY, __DEV__ || isTestStoreKey(REVENUECAT_TEST_KEY));
+    // apiKeyForBuild withholds the Test Store key from non-debug builds, where
+    // the RevenueCat SDK would otherwise alert and crash on purpose. The tip UI
+    // is therefore absent from a Release build until a real store key exists.
+    configurePurchases(apiKeyForBuild(REVENUECAT_TEST_KEY, __DEV__), __DEV__);
   }, []);
 
   return (

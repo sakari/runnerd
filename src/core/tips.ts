@@ -64,6 +64,22 @@ export function productionApiKey(key: string): string {
 }
 
 /**
+ * The API key this build may actually use.
+ *
+ * RevenueCat's SDK refuses a Test Store key outside a debug build — it shows an
+ * alert and crashes, deliberately, so simulated purchases can never ship. So a
+ * non-dev build must be handed no key at all: `configurePurchases` then no-ops
+ * and the tip UI stays hidden, rather than taking the app down with it.
+ *
+ * This is the same rule `productionApiKey` encodes; the difference is that this
+ * one is on the live path.
+ */
+export function apiKeyForBuild(key: string, isDev: boolean): string {
+  if (!isDev && isTestStoreKey(key)) return "";
+  return key;
+}
+
+/**
  * Derives the widget state from CustomerInfo. `null` means "not loaded yet"
  * rather than "not a supporter".
  */

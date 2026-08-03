@@ -3,6 +3,7 @@ import type { CustomerInfo, PurchasesOffering } from "react-native-purchases";
 import {
   SUPPORTER_ENTITLEMENT,
   REVENUECAT_TEST_KEY,
+  apiKeyForBuild,
   classifyPurchaseError,
   formatSupporterSince,
   isTestStoreKey,
@@ -169,6 +170,30 @@ describe("classifyPurchaseError", () => {
     expect(classifyPurchaseError(null)).toBe("failed");
     expect(classifyPurchaseError("nope")).toBe("failed");
     expect(classifyPurchaseError(undefined)).toBe("failed");
+  });
+});
+
+describe("apiKeyForBuild", () => {
+  it("withholds a Test Store key from a non-debug build", () => {
+    // The SDK alerts and crashes on a test_ key in a Release build, by design.
+    expect(apiKeyForBuild("test_abc123", false)).toBe("");
+  });
+
+  it("passes a Test Store key through in a debug build", () => {
+    expect(apiKeyForBuild("test_abc123", true)).toBe("test_abc123");
+  });
+
+  it("passes a store key through in either build", () => {
+    expect(apiKeyForBuild("appl_abc123", false)).toBe("appl_abc123");
+    expect(apiKeyForBuild("appl_abc123", true)).toBe("appl_abc123");
+  });
+
+  it("keeps an empty key empty", () => {
+    expect(apiKeyForBuild("", false)).toBe("");
+  });
+
+  it("never hands the committed key to a release build", () => {
+    expect(apiKeyForBuild(REVENUECAT_TEST_KEY, false)).toBe("");
   });
 });
 

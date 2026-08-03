@@ -2,10 +2,14 @@ appId: com.runnerd.app
 
 # Tip jar, exercised against the RevenueCat Test Store.
 #
-# Unconditional: REVENUECAT_TEST_KEY is set, so a missing tip button is a real
-# failure rather than a reason to skip. Requires the dashboard to have a
-# non-subscription product in the `default` offering, attached to the
-# `supporter` entitlement.
+# NOT RUN IN CI. RevenueCat refuses a Test Store key outside a debug build, so
+# the tip UI does not exist in the Release build that the e2e workflow produces.
+# Run this against a debug build: `pnpm ios` (or a simulator debug build), then
+# `pnpm e2e:tip`.
+#
+# Unconditional by design: a missing tip button is a real failure, not a reason
+# to skip. Requires the dashboard to have a non-subscription product in the
+# `default` offering, attached to the `supporter` entitlement.
 ---
 - launchApp:
     clearState: true
