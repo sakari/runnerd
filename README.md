@@ -60,19 +60,33 @@ The dashboard needs a non-subscription product priced at roughly EUR 1, in the
 `default` offering, attached to a `supporter` entitlement. `e2e/tip.yaml`
 asserts against that setup unconditionally.
 
-**The tip only exists in debug builds.** RevenueCat's SDK deliberately alerts
-and crashes when a `test_` key is used in a Release build, so `apiKeyForBuild`
-withholds the key from non-debug builds: `pnpm ios:release` runs normally but
-shows no tip widget. Use `pnpm ios` (a debug build, tethered to Metro) to see
-or test it, and `pnpm e2e:tip` to run its Maestro flow against that build.
-`pnpm e2e` and CI cover `smoke.yaml` only, for the same reason.
+**Which build shows the tip.** RevenueCat's SDK deliberately alerts and
+crashes when a `test_` key is used outside a debug build, so `apiKeyForBuild`
+withholds the key unless the build can accept it:
+
+| Command | Configuration | Standalone | Tip |
+|---|---|---|---|
+| `pnpm ios` | Debug | no — needs Metro | yes |
+| `pnpm ios:teststore` | TestStore | **yes** | yes |
+| `pnpm ios:release` | Release | yes | no |
+
+`pnpm ios:teststore` is the one to use on your own phone. `TestStore` is a
+clone of the Release configuration — so the app target has no `DEBUG` and
+loads its embedded bundle, which is what makes it standalone — while
+`plugins/with-test-store-configuration.js` maps it to CocoaPods' debug mode so
+the RevenueCat pod compiles with `DEBUG` and accepts the key. The same plugin
+sets `EXPO_PUBLIC_USE_TEST_STORE=1` in that configuration, which is how the JS
+knows it may use the key (`__DEV__` is false there).
+
+`pnpm ios:release` stays useful for checking the app as it would really ship;
+it simply has no tip widget until a real `appl_` key exists.
+
+CI and `pnpm e2e` cover `smoke.yaml` only, because the workflow builds Release
+where the tip does not exist. Run `pnpm e2e:tip` against a debug or TestStore
+build instead.
 
 In Expo Go the SDK falls back to Preview API Mode and the tip button silently
 does nothing, so a native build is required either way.
-
-Making the tip work in an untethered on-device build needs an Xcode build
-configuration duplicated from Debug (so the RevenueCat pod keeps `DEBUG`) with
-JS bundling forced on — RevenueCat's own guidance. That is not set up here.
 
 ## Scripts
 

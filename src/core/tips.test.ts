@@ -174,16 +174,17 @@ describe("classifyPurchaseError", () => {
 });
 
 describe("apiKeyForBuild", () => {
-  it("withholds a Test Store key from a non-debug build", () => {
-    // The SDK alerts and crashes on a test_ key in a Release build, by design.
+  it("withholds a Test Store key when the build disallows it", () => {
+    // The SDK alerts and crashes on a test_ key outside a debug build, by
+    // design — so it must never reach configure() there.
     expect(apiKeyForBuild("test_abc123", false)).toBe("");
   });
 
-  it("passes a Test Store key through in a debug build", () => {
+  it("passes a Test Store key through when the build allows it", () => {
     expect(apiKeyForBuild("test_abc123", true)).toBe("test_abc123");
   });
 
-  it("passes a store key through in either build", () => {
+  it("passes a store key through either way", () => {
     expect(apiKeyForBuild("appl_abc123", false)).toBe("appl_abc123");
     expect(apiKeyForBuild("appl_abc123", true)).toBe("appl_abc123");
   });
@@ -192,7 +193,7 @@ describe("apiKeyForBuild", () => {
     expect(apiKeyForBuild("", false)).toBe("");
   });
 
-  it("never hands the committed key to a release build", () => {
+  it("never hands the committed key to a plain Release build", () => {
     expect(apiKeyForBuild(REVENUECAT_TEST_KEY, false)).toBe("");
   });
 });

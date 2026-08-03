@@ -38,6 +38,7 @@
     "plugins": [
       "expo-sqlite",
       "./plugins/with-local-notifications-only",
+      "./plugins/with-test-store-configuration",
       "expo-notifications"
     ]
   }

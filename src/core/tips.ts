@@ -68,14 +68,19 @@ export function productionApiKey(key: string): string {
  *
  * RevenueCat's SDK refuses a Test Store key outside a debug build — it shows an
  * alert and crashes, deliberately, so simulated purchases can never ship. So a
- * non-dev build must be handed no key at all: `configurePurchases` then no-ops
- * and the tip UI stays hidden, rather than taking the app down with it.
+ * a build that is not debug-compiled must be handed no key at all:
+ * `configurePurchases` then no-ops and the tip UI stays hidden, rather than
+ * taking the app down with it.
+ *
+ * `allowTestStore` is true for a normal debug build and for the `TestStore`
+ * Xcode configuration, whose pods are compiled with DEBUG (see
+ * plugins/with-test-store-configuration.js).
  *
  * This is the same rule `productionApiKey` encodes; the difference is that this
  * one is on the live path.
  */
-export function apiKeyForBuild(key: string, isDev: boolean): string {
-  if (!isDev && isTestStoreKey(key)) return "";
+export function apiKeyForBuild(key: string, allowTestStore: boolean): string {
+  if (!allowTestStore && isTestStoreKey(key)) return "";
   return key;
 }
 

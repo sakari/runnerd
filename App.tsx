@@ -11,15 +11,19 @@ import HistoryScreen from "./src/screens/HistoryScreen";
 
 const Tab = createBottomTabNavigator();
 
+const ALLOW_TEST_STORE = __DEV__ || process.env.EXPO_PUBLIC_USE_TEST_STORE === "1";
+
 export default function App() {
   useEffect(() => {
     // Only set up the handler at launch. Permission prompts are requested
     // in-context when the user first taps Start, per App Store guideline 5.1.1(ii).
     setupNotificationHandler();
-    // apiKeyForBuild withholds the Test Store key from non-debug builds, where
-    // the RevenueCat SDK would otherwise alert and crash on purpose. The tip UI
-    // is therefore absent from a Release build until a real store key exists.
-    configurePurchases(apiKeyForBuild(REVENUECAT_TEST_KEY, __DEV__), __DEV__);
+    // apiKeyForBuild withholds the Test Store key from builds whose pods are
+    // not DEBUG-compiled, where the RevenueCat SDK alerts and crashes on
+    // purpose. True for a plain debug build, and for the standalone `TestStore`
+    // configuration, which sets EXPO_PUBLIC_USE_TEST_STORE at bundle time.
+    // A plain Release build gets no key, so it has no tip UI.
+    configurePurchases(apiKeyForBuild(REVENUECAT_TEST_KEY, ALLOW_TEST_STORE), ALLOW_TEST_STORE);
   }, []);
 
   return (

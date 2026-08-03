@@ -7,6 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "ios:release": "node scripts/clear-ios-team.mjs && expo run:ios --device --configuration Release",
+    "ios:teststore": "node scripts/clear-ios-team.mjs && expo run:ios --device --configuration TestStore",
     "web": "expo start --web",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
