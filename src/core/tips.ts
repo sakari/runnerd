@@ -3,7 +3,11 @@ import type { CustomerInfo, PurchasesOffering, PurchasesPackage } from "react-na
 // Type-only imports above: pulling anything from react-native-purchases at
 // runtime would load react-native, which is not available under vitest.
 
-/** Entitlement identifier configured in the RevenueCat dashboard. */
+/**
+ * Entitlement identifier configured in the RevenueCat dashboard. Optional:
+ * `supporterState` falls back to purchase history when it is absent, so a
+ * dashboard without this entitlement still works.
+ */
 export const SUPPORTER_ENTITLEMENT = "supporter";
 
 /**
@@ -68,7 +72,7 @@ export function productionApiKey(key: string): string {
  *
  * RevenueCat's SDK refuses a Test Store key outside a debug build — it shows an
  * alert and crashes, deliberately, so simulated purchases can never ship. So a
- * a build that is not debug-compiled must be handed no key at all:
+ * build that is not debug-compiled must be handed no key at all:
  * `configurePurchases` then no-ops and the tip UI stays hidden, rather than
  * taking the app down with it.
  *
@@ -95,14 +99,41 @@ export function supporterState(info: CustomerInfo | null): SupporterState {
   if (!info?.entitlements?.active) return { kind: "unknown" };
 
   const entitlement = info.entitlements.active[SUPPORTER_ENTITLEMENT];
-  if (!entitlement) return { kind: "none" };
+  if (entitlement) {
+    return { kind: "supporter", since: parseIsoDate(entitlement.originalPurchaseDate) };
+  }
 
-  // `new Date(null)` is epoch 0, not Invalid Date, so a null from the bridge
-  // would render "Supporter since January 1970" rather than falling back.
-  const raw = entitlement.originalPurchaseDate;
-  const parsed = typeof raw === "string" ? new Date(raw) : new Date(NaN);
-  const since = isNaN(parsed.getTime()) ? null : parsed;
-  return { kind: "supporter", since };
+  // Fallback: a completed non-subscription purchase. The tip is the only
+  // product, so "bought anything" and "tipped" are the same question — and
+  // answering it this way does not depend on an entitlement being present and
+  // named exactly SUPPORTER_ENTITLEMENT in the dashboard. That dependency
+  // fails silently: the purchase succeeds and the badge simply never appears.
+  //
+  // The trade-off is that a refund may not clear the badge. For a thank-you
+  // that unlocks nothing, that is the better failure direction.
+  const purchases = info.nonSubscriptionTransactions;
+  if (Array.isArray(purchases) && purchases.length > 0) {
+    return { kind: "supporter", since: earliestPurchaseDate(purchases) };
+  }
+
+  return { kind: "none" };
+}
+
+/** Parses an ISO date from the bridge, treating anything unusable as absent. */
+function parseIsoDate(raw: unknown): Date | null {
+  // `new Date(null)` is epoch 0 rather than Invalid Date, so a null would
+  // render "Supporter since January 1970" without the typeof check.
+  if (typeof raw !== "string") return null;
+  const parsed = new Date(raw);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function earliestPurchaseDate(purchases: readonly unknown[]): Date | null {
+  const dates = purchases
+    .map((purchase) => parseIsoDate((purchase as { purchaseDate?: unknown })?.purchaseDate))
+    .filter((date): date is Date => date !== null);
+
+  return dates.length === 0 ? null : dates.reduce((a, b) => (a <= b ? a : b));
 }
 
 /** Formats the supporter badge's date, e.g. "March 2026". */

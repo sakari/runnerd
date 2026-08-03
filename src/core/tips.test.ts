@@ -12,8 +12,11 @@ import {
   tipPackage,
 } from "./tips";
 
-function customerInfo(active: Record<string, { originalPurchaseDate: string }>): CustomerInfo {
-  return { entitlements: { active } } as unknown as CustomerInfo;
+function customerInfo(
+  active: Record<string, { originalPurchaseDate: string }>,
+  nonSubscriptionTransactions: unknown[] = [],
+): CustomerInfo {
+  return { entitlements: { active }, nonSubscriptionTransactions } as unknown as CustomerInfo;
 }
 
 function offering(packages: unknown[]): PurchasesOffering {
@@ -59,6 +62,51 @@ describe("supporterState", () => {
     const info = customerInfo({ [SUPPORTER_ENTITLEMENT]: { originalPurchaseDate: "nonsense" } });
 
     expect(supporterState(info)).toEqual({ kind: "supporter", since: null });
+  });
+
+  it("is supporter from purchase history when no entitlement is configured", () => {
+    // The dashboard may have no `supporter` entitlement, or one under another
+    // name. The purchase still happened, so the badge must still appear.
+    const info = customerInfo({}, [
+      { productIdentifier: "tip", purchaseDate: "2026-05-02T09:00:00Z" },
+    ]);
+
+    expect(supporterState(info)).toEqual({
+      kind: "supporter",
+      since: new Date("2026-05-02T09:00:00Z"),
+    });
+  });
+
+  it("uses the earliest purchase when there are several", () => {
+    const info = customerInfo({}, [
+      { purchaseDate: "2026-06-01T00:00:00Z" },
+      { purchaseDate: "2026-04-01T00:00:00Z" },
+      { purchaseDate: "2026-05-01T00:00:00Z" },
+    ]);
+
+    expect(supporterState(info)).toEqual({
+      kind: "supporter",
+      since: new Date("2026-04-01T00:00:00Z"),
+    });
+  });
+
+  it("is supporter with a null date when purchase dates are unusable", () => {
+    expect(supporterState(customerInfo({}, [{ purchaseDate: null }]))).toEqual({
+      kind: "supporter",
+      since: null,
+    });
+  });
+
+  it("prefers the entitlement date over purchase history", () => {
+    const info = customerInfo(
+      { [SUPPORTER_ENTITLEMENT]: { originalPurchaseDate: "2026-03-04T10:00:00Z" } },
+      [{ purchaseDate: "2026-05-02T09:00:00Z" }],
+    );
+
+    expect(supporterState(info)).toEqual({
+      kind: "supporter",
+      since: new Date("2026-03-04T10:00:00Z"),
+    });
   });
 
   it("is supporter with a null date for a non-string purchase date", () => {
