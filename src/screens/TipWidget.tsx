@@ -45,7 +45,17 @@ function useSupporter(): [SupporterState, (info: CustomerInfo | null) => void] {
           setInfo(next);
           return;
         }
-        if (!isConfigured() || ++attempts >= MAX_LOAD_ATTEMPTS) return;
+        if (!isConfigured()) {
+          console.warn("[tips] SDK not configured — tip widget hidden. See the configure warning.");
+          return;
+        }
+        if (++attempts >= MAX_LOAD_ATTEMPTS) {
+          console.warn(
+            `[tips] CustomerInfo still unavailable after ${MAX_LOAD_ATTEMPTS} attempts — ` +
+              "tip widget hidden for this session.",
+          );
+          return;
+        }
         timer = setTimeout(load, RETRY_DELAY_MS * attempts);
       });
     };

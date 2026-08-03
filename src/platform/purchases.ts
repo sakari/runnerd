@@ -24,7 +24,17 @@ export function configurePurchases(apiKey: string, debug: boolean): boolean {
     Purchases.configure({ apiKey });
     configured = true;
     return true;
-  } catch {
+  } catch (error) {
+    // Loud on purpose. Every downstream failure mode here renders as "the tip
+    // widget is invisible", which is indistinguishable from "still loading" —
+    // so the reason has to reach the log or it is undebuggable on a device.
+    console.warn(
+      "[tips] RevenueCat configure failed — the tip UI will stay hidden. " +
+        "Most often the native module is missing because the app was not " +
+        "rebuilt after the dependency was added: try " +
+        "`npx expo prebuild --platform ios --clean` then `pnpm ios:release`.",
+      error,
+    );
     return false;
   }
 }
@@ -39,7 +49,8 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   try {
     const offerings = await Purchases.getOfferings();
     return offerings?.current ?? null;
-  } catch {
+  } catch (error) {
+    console.warn("[tips] getOfferings failed — the tip sheet will offer nothing.", error);
     return null;
   }
 }
@@ -59,7 +70,8 @@ export async function refreshCustomerInfo(): Promise<CustomerInfo | null> {
   if (!configured) return null;
   try {
     return await Purchases.getCustomerInfo();
-  } catch {
+  } catch (error) {
+    console.warn("[tips] getCustomerInfo failed — the tip widget stays hidden.", error);
     return null;
   }
 }
@@ -76,7 +88,8 @@ export async function restoreTip(): Promise<CustomerInfo | null> {
   if (!configured) return null;
   try {
     return await Purchases.restorePurchases();
-  } catch {
+  } catch (error) {
+    console.warn("[tips] restorePurchases failed.", error);
     return null;
   }
 }
