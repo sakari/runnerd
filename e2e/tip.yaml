@@ -9,7 +9,8 @@ appId: com.runnerd.app
 #
 # Unconditional by design: a missing tip button is a real failure, not a reason
 # to skip. Requires the dashboard to have a non-subscription product in the
-# `default` offering, attached to the `supporter` entitlement.
+# `default` offering. No entitlement is needed — supporterState falls back to
+# purchase history.
 ---
 - launchApp:
     clearState: true
