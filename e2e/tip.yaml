@@ -1,0 +1,82 @@
+appId: com.runnerd.app
+
+# Tip jar, exercised against the RevenueCat Test Store.
+#
+# NOT RUN IN CI. RevenueCat refuses a Test Store key outside a debug build, so
+# the tip UI does not exist in the Release build that the e2e workflow produces.
+# Run this against a debug build: `pnpm ios` (or a simulator debug build), then
+# `pnpm e2e:tip`.
+#
+# Unconditional by design: a missing tip button is a real failure, not a reason
+# to skip. Requires the dashboard to have a non-subscription product in the
+# `default` offering. No entitlement is needed — supporterState falls back to
+# purchase history.
+---
+- launchApp:
+    clearState: true
+    permissions:
+      location: always
+      notifications: allow
+
+- tapOn:
+    id: "tab-history"
+
+# The widget only renders once CustomerInfo resolves, so this is also the
+# assertion that the SDK configured and reached RevenueCat at all.
+- assertVisible:
+    id: "tip-open"
+
+# Cancelling must leave the widget exactly as it was.
+- tapOn:
+    id: "tip-open"
+- assertVisible:
+    id: "tip-confirm"
+- tapOn:
+    id: "tip-confirm"
+- tapOn: "Cancel"
+- tapOn:
+    id: "tip-close"
+- assertVisible:
+    id: "tip-open"
+- assertNotVisible:
+    id: "tip-supporter"
+
+# A failed purchase must report itself and leave the widget tappable.
+- tapOn:
+    id: "tip-open"
+- tapOn:
+    id: "tip-confirm"
+- tapOn: "Simulate failure"
+- assertVisible:
+    id: "tip-failed"
+- tapOn:
+    id: "tip-close"
+- assertVisible:
+    id: "tip-open"
+- assertNotVisible:
+    id: "tip-supporter"
+
+# A successful tip swaps the button for the badge, permanently.
+- tapOn:
+    id: "tip-open"
+- tapOn:
+    id: "tip-confirm"
+- tapOn: "Simulate purchase"
+- assertVisible:
+    id: "tip-thanks"
+- tapOn:
+    id: "tip-close"
+- assertVisible:
+    id: "tip-supporter"
+- assertNotVisible:
+    id: "tip-open"
+
+# Relaunch WITHOUT clearState: supporter status must survive a restart.
+- launchApp:
+    clearState: false
+- tapOn:
+    id: "tab-history"
+- assertVisible:
+    id: "tip-supporter"
+- assertNotVisible:
+    id: "tip-open"

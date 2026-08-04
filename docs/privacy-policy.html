@@ -83,7 +83,7 @@
   <body>
     <main>
       <h1>Runnerd Privacy Policy</h1>
-      <p class="meta">Last updated: 14 April 2026</p>
+      <p class="meta">Last updated: 4 August 2026</p>
 
       <p>
         Runnerd is a running tracker app that measures the distance, duration,
@@ -95,8 +95,10 @@
       <h2>1. Who we are</h2>
       <p>
         Runnerd is developed by the Runnerd project ("we", "us"). If you have
-        any questions about this policy, contact us at
-        <a href="mailto:privacy@runnerd.app">privacy@runnerd.app</a>.
+        any questions about this policy, open an issue at
+        <a href="https://github.com/sakari/runnerd/issues"
+          >github.com/sakari/runnerd/issues</a
+        >.
       </p>
 
       <h2>2. What data Runnerd processes</h2>
@@ -111,6 +113,16 @@
           <strong>Run history you create in the app</strong> — start time,
           duration, and total distance for each run you record.
         </li>
+        <li>
+          <strong>Optional tip purchases.</strong> Runnerd offers an optional
+          one-off tip that supports development. It unlocks no features. The app
+          contacts RevenueCat, our purchase-management provider, when it starts,
+          when you open the History screen, and when you open the tip screen or
+          make a tip. RevenueCat receives a randomly generated
+          anonymous identifier for your installation, basic app and device
+          information (app version, operating-system version, device model,
+          country), your IP address, and the details of the purchase itself.
+        </li>
       </ul>
       <p>Runnerd does <em>not</em> collect:</p>
       <ul>
@@ -121,7 +133,16 @@
           cross-app/site tracking data.
         </li>
         <li>Analytics, telemetry, or crash-reporting data.</li>
+        <li>
+          Payment card details. Tips are charged by Apple or Google through
+          your existing store account; Runnerd never sees or stores your
+          payment information.
+        </li>
       </ul>
+      <p>
+        Your location and run history are never sent to RevenueCat or anywhere
+        else. The tip feature and your run data are entirely separate.
+      </p>
 
       <h2>3. How your data is used</h2>
       <ul>
@@ -137,6 +158,11 @@
           To play audio callouts and scheduled local notifications at the
           halfway point and end of a timed run.
         </li>
+        <li>
+          To show the correct localised price for the optional tip, to complete
+          a tip you choose to make, and to remember that you have tipped so the
+          app can thank you and stop asking.
+        </li>
       </ul>
       <p>
         Runnerd does not use your data for advertising, profiling, or training
@@ -146,9 +172,17 @@
       <h2>4. Where your data is stored</h2>
       <p>
         All run data is stored locally on your device in a SQLite database
-        managed by the app. Runnerd does not operate any servers that receive
-        your data, and your data is never transmitted to us or to any third
+        managed by the app. Runnerd does not operate any servers, and your
+        location and run history are never transmitted to us or to any third
         party.
+      </p>
+      <p>
+        The one exception is the optional tip described in section 2. Records
+        of a tip &mdash; the anonymous installation identifier and the purchase
+        itself &mdash; are held by RevenueCat on servers in the United States,
+        and by Apple or Google as the seller of record. A copy is cached on
+        your device so the app knows you have tipped without needing a network
+        connection.
       </p>
 
       <h2>5. Background location</h2>
@@ -173,9 +207,21 @@
       <h2>7. Third parties and SDKs</h2>
       <p>
         Runnerd does not use third-party analytics, advertising, attribution,
-        or tracking SDKs. The app uses the standard operating-system APIs and
-        open-source libraries (React Native, Expo, SQLite) that run locally on
-        your device.
+        or tracking SDKs. Aside from the purchase provider below, the app uses
+        standard operating-system APIs and open-source libraries (React Native,
+        Expo, SQLite) that run locally on your device.
+      </p>
+      <p>
+        Runnerd includes the <strong>RevenueCat</strong> SDK solely to offer and
+        manage the optional tip. It is contacted only for that purpose &mdash;
+        to check whether you have already tipped, to fetch the current price, and
+        to complete a purchase &mdash; but because the check runs when the app
+        starts and when you open the History screen, it happens whether or not
+        you ever open the tip screen. It receives the data listed in section 2,
+        never your location or run history, and it is not used for
+        advertising, profiling, or tracking you across apps or websites. See
+        <a href="https://www.revenuecat.com/privacy/">RevenueCat's privacy
+        policy</a>.
       </p>
 
       <h2>8. Your choices and rights</h2>
@@ -192,8 +238,18 @@
         </li>
         <li>
           <strong>Delete all data</strong> by uninstalling Runnerd from your
-          device. Because all data is stored locally, uninstalling removes it
-          completely.
+          device. Because your runs and location data are stored only locally,
+          uninstalling removes them completely.
+        </li>
+        <li>
+          <strong>Tip records are the exception.</strong> If you have tipped,
+          the purchase record held by RevenueCat and by Apple or Google is not
+          removed when you uninstall the app &mdash; that is what allows
+          &ldquo;Restore purchases&rdquo; to work if you reinstall. To have the
+          RevenueCat record deleted, open an issue at
+          <a href="https://github.com/sakari/runnerd/issues"
+            >github.com/sakari/runnerd/issues</a
+          >.
         </li>
       </ul>
       <p>
@@ -211,9 +267,11 @@
       <p>
         Runnerd is not directed to children under 13, and we do not knowingly
         collect personal data from children. If you believe a child has
-        provided personal data to us, contact us at
-        <a href="mailto:privacy@runnerd.app">privacy@runnerd.app</a> and we
-        will take appropriate action.
+        provided personal data to us, open an issue at
+        <a href="https://github.com/sakari/runnerd/issues"
+          >github.com/sakari/runnerd/issues</a
+        >
+        and we will take appropriate action.
       </p>
 
       <h2>10. Security</h2>
@@ -237,7 +295,9 @@
       <h2>12. Contact</h2>
       <p>
         Questions about this policy or Runnerd's handling of your data:
-        <a href="mailto:privacy@runnerd.app">privacy@runnerd.app</a>.
+        <a href="https://github.com/sakari/runnerd/issues"
+          >github.com/sakari/runnerd/issues</a
+        >.
       </p>
 
       <footer>&copy; 2026 Runnerd.</footer>
